@@ -6,7 +6,7 @@ and other Kitty-graphics terminals. Rust remains the project, editing, media, an
 agent-command backend.
 
 ```text
-HTML / CSS / SVG / <video>
+Vite + React + TypeScript + <video>
         ↓ Chromium offscreen frames
 terminal-browser → Kitty graphics → terminal
         ↕ local authenticated HTTP
@@ -35,6 +35,21 @@ te serve . --port 4173
 
 The command prints a session-scoped localhost URL. The terminal version and the
 ordinary-browser version use the exact same UI and Rust API.
+
+The UI source lives in `web/src/`. The production Vite bundle is committed
+because Rust embeds it in the `te` executable. After editing the interface:
+
+```bash
+cd web
+npm install
+npm run build
+cd ..
+cargo test
+```
+
+For Vite hot reload, run `te serve . --port 4173`, copy its session URL, and
+start `npm run dev` from `web/` with `TE_API_TARGET` set to that URL's origin and
+session prefix.
 
 ## Agent surface
 

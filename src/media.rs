@@ -1,4 +1,4 @@
-use crate::model::{AssetKind, Project};
+use crate::model::{AssetKind, Clip, Project};
 use crate::project::resolve_asset_path;
 use anyhow::{Context, Result, bail};
 use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage, imageops};
@@ -243,6 +243,83 @@ pub fn filmstrip(
         imageops::overlay(&mut strip, &thumb, (index as i64) * 240, 0);
     }
     DynamicImage::ImageRgba8(strip).save(&output)?;
+    Ok(output)
+}
+
+pub fn clip_filmstrip(
+    root: &Path,
+    project: &Project,
+    clip: &Clip,
+    count: usize,
+) -> Result<PathBuf> {
+    let count = count.clamp(2, 20);
+    let output = root.join(format!(
+        ".te/cache/clip-filmstrips/r{:010}-{}-{count}.jpg",
+        project.revision, clip.id
+    ));
+    if output.is_file() {
+        return Ok(output);
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut strip = RgbaImage::from_pixel((count as u32) * 160, 90, Rgba([10, 12, 16, 255]));
+    for index in 0..count {
+        let position = index as f64 / (count - 1) as f64;
+        let offset = ((clip.duration_frames.saturating_sub(1)) as f64 * position).round() as i64;
+        let path = frame_at(root, project, clip.start_frame + offset, None)?;
+        let thumb = imageops::resize(
+            &image::open(path)?.to_rgba8(),
+            160,
+            90,
+            imageops::FilterType::Triangle,
+        );
+        imageops::overlay(&mut strip, &thumb, (index as i64) * 160, 0);
+    }
+    DynamicImage::ImageRgba8(strip).save(&output)?;
+    Ok(output)
+}
+
+pub fn clip_waveform(root: &Path, project: &Project, clip: &Clip) -> Result<PathBuf> {
+    let output = root.join(format!(
+        ".te/cache/waveforms/r{:010}-{}.png",
+        project.revision, clip.id
+    ));
+    if output.is_file() {
+        return Ok(output);
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let asset = project
+        .asset(&clip.asset_id)
+        .context("clip asset missing")?;
+    if !asset.has_audio {
+        DynamicImage::ImageRgba8(ImageBuffer::from_pixel(1200, 100, Rgba([0, 0, 0, 0])))
+            .save(&output)?;
+        return Ok(output);
+    }
+    let source_start = project.fps.frames_to_seconds(clip.source_in_frame);
+    let duration = project
+        .fps
+        .frames_to_seconds(clip.duration_frames)
+        .max(0.04);
+    let result = Command::new("ffmpeg")
+        .args(["-hide_banner", "-loglevel", "error", "-y", "-ss"])
+        .arg(format!("{source_start:.6}"))
+        .arg("-t")
+        .arg(format!("{duration:.6}"))
+        .arg("-i")
+        .arg(resolve_asset_path(root, asset))
+        .args([
+            "-filter_complex",
+            "aformat=channel_layouts=mono,showwavespic=s=1200x100:colors=0xD8DEFF,format=rgba,colorkey=black:0.02:0.0",
+            "-frames:v",
+            "1",
+        ])
+        .arg(&output)
+        .output()?;
+    ensure_success("ffmpeg waveform generation", &result)?;
     Ok(output)
 }
 

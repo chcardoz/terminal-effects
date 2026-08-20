@@ -1,4 +1,6 @@
 /target
+/web/node_modules
+/web/*.tsbuildinfo
 .DS_Store
 .te/
 *.mp4

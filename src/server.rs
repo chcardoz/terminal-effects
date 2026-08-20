@@ -11,9 +11,9 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
-const INDEX_HTML: &str = include_str!("../web/index.html");
-const STYLES_CSS: &str = include_str!("../web/styles.css");
-const APP_JS: &str = include_str!("../web/app.js");
+const INDEX_HTML: &str = include_str!("../web/dist/index.html");
+const STYLES_CSS: &str = include_str!("../web/dist/assets/app.css");
+const APP_JS: &str = include_str!("../web/dist/assets/app.js");
 
 pub struct EditorServer {
     pub url: String,
@@ -99,19 +99,18 @@ fn route(mut request: Request, project_path: &Path, prefix: &str) -> Result<()> 
             "text/html; charset=utf-8",
             INDEX_HTML,
         ),
-        (&Method::Get, "styles.css") => respond_text(
+        (&Method::Get, "assets/app.css") => respond_text(
             request,
             StatusCode(200),
             "text/css; charset=utf-8",
             STYLES_CSS,
         ),
-        (&Method::Get, "app.js") => respond_text(
+        (&Method::Get, "assets/app.js") => respond_text(
             request,
             StatusCode(200),
             "text/javascript; charset=utf-8",
             APP_JS,
         ),
-        (&Method::Get, icon) if icon.starts_with("icons/") => serve_icon(request, icon),
         (&Method::Get, "api/project") => project_response(request, project_path),
         (&Method::Get, "frame") => frame_response(request, project_path, query),
         (&Method::Get, media_path) if media_path.starts_with("media/") => {
@@ -119,6 +118,12 @@ fn route(mut request: Request, project_path: &Path, prefix: &str) -> Result<()> 
         }
         (&Method::Get, thumb_path) if thumb_path.starts_with("thumbnail/") => {
             asset_file_response(request, project_path, &thumb_path[10..], true)
+        }
+        (&Method::Get, strip_path) if strip_path.starts_with("filmstrip/") => {
+            clip_visual_response(request, project_path, &strip_path[10..], false)
+        }
+        (&Method::Get, waveform_path) if waveform_path.starts_with("waveform/") => {
+            clip_visual_response(request, project_path, &waveform_path[9..], true)
         }
         (&Method::Post, "api/playhead") => {
             let result = (|| {
@@ -231,6 +236,14 @@ fn project_response(request: Request, project_path: &Path) -> Result<()> {
         asset["mediaUrl"] = json!(format!("media/{id}"));
         asset["thumbnailUrl"] = json!(format!("thumbnail/{id}"));
     }
+    let clips = serialized["clips"]
+        .as_array_mut()
+        .context("serialized clips are not an array")?;
+    for clip in clips {
+        let id = clip["id"].as_str().unwrap_or_default().to_string();
+        clip["filmstripUrl"] = json!(format!("filmstrip/{id}"));
+        clip["waveformUrl"] = json!(format!("waveform/{id}"));
+    }
     respond_json(
         request,
         StatusCode(200),
@@ -284,6 +297,30 @@ fn asset_file_response(
     }
 }
 
+fn clip_visual_response(
+    request: Request,
+    project_path: &Path,
+    clip_id: &str,
+    waveform: bool,
+) -> Result<()> {
+    let value = project::load(project_path)?;
+    let root = project_path
+        .parent()
+        .context("project file has no parent")?;
+    let clip = value
+        .clips
+        .iter()
+        .find(|clip| clip.id == clip_id)
+        .with_context(|| format!("clip not found: {clip_id}"))?;
+    if waveform {
+        let output = media::clip_waveform(root, &value, clip)?;
+        respond_file(request, &output, "image/png")
+    } else {
+        let output = media::clip_filmstrip(root, &value, clip, 12)?;
+        respond_file(request, &output, "image/jpeg")
+    }
+}
+
 fn respond_file(request: Request, path: &Path, content_type: &str) -> Result<()> {
     let mut file = File::open(path).with_context(|| format!("cannot open {}", path.display()))?;
     let total = file.metadata()?.len();
@@ -332,57 +369,6 @@ fn parse_range(value: &str, total: u64) -> Option<(u64, u64)> {
         end.parse::<u64>().ok()?.min(total - 1)
     };
     (start <= end && start < total).then_some((start, end))
-}
-
-fn serve_icon(request: Request, icon: &str) -> Result<()> {
-    let Some(bytes) = icon_bytes(icon) else {
-        return respond_text(request, StatusCode(404), "text/plain", "Not found");
-    };
-    let response = Response::from_data(bytes)
-        .with_status_code(StatusCode(200))
-        .with_header(header("Content-Type", "image/svg+xml")?)
-        .with_header(header("Cache-Control", "public, max-age=86400")?);
-    request.respond(response)?;
-    Ok(())
-}
-
-macro_rules! icons {
-    ($name:expr, $( $file:literal ),+ $(,)?) => {
-        match $name {
-            $(concat!("icons/", $file, ".svg") => Some(include_bytes!(concat!("../assets/icons/", $file, ".svg")).as_slice()),)+
-            _ => None,
-        }
-    };
-}
-
-fn icon_bytes(name: &str) -> Option<&'static [u8]> {
-    icons!(
-        name,
-        "film",
-        "folder",
-        "pause",
-        "upload",
-        "volume-x",
-        "music-2",
-        "mouse-pointer-2",
-        "eye",
-        "skip-back",
-        "play",
-        "step-forward",
-        "skip-forward",
-        "download",
-        "magnet",
-        "sliders-horizontal",
-        "lock",
-        "step-back",
-        "chevron-down",
-        "scissors",
-        "volume-2",
-        "search",
-        "undo-2",
-        "redo-2",
-        "trash-2",
-    )
 }
 
 fn respond_text(

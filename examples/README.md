@@ -10,6 +10,7 @@ From the demo directory:
 ```bash
 cd examples/demo-project
 cp /path/to/your/clips/*.mp4 .
+te import ./*.mp4 --json
 te .
 ```
 

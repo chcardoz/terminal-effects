@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "name": "demo-project",
+  "revision": 16,
+  "fps": {
+    "numerator": 30,
+    "denominator": 1
+  },
+  "width": 1728,
+  "height": 1080,
+  "playheadFrame": 1672,
+  "selectedClipId": "clip_4fdcda8931",
+  "assets": [
+    {
+      "id": "asset_c8c12cebca",
+      "name": "twitter-launch.mp4",
+      "path": "twitter-launch.mp4",
+      "kind": "video",
+      "durationFrames": 1082,
+      "width": 1728,
+      "height": 1080,
+      "hasAudio": true
+    },
+    {
+      "id": "asset_d51d2515c6",
+      "name": "yc-app.mp4",
+      "path": "yc-app.mp4",
+      "kind": "video",
+      "durationFrames": 2858,
+      "width": 1360,
+      "height": 720,
+      "hasAudio": true
+    },
+    {
+      "id": "asset_f6f78c70dc",
+      "name": "yc-intro.mp4",
+      "path": "yc-intro.mp4",
+      "kind": "video",
+      "durationFrames": 2281,
+      "width": 720,
+      "height": 404,
+      "hasAudio": true
+    }
+  ],
+  "tracks": [
+    {
+      "id": "V1",
+      "kind": "video",
+      "name": "Video 1"
+    },
+    {
+      "id": "A1",
+      "kind": "audio",
+      "name": "Audio 1"
+    }
+  ],
+  "clips": [
+    {
+      "id": "clip_0539940290",
+      "assetId": "asset_c8c12cebca",
+      "trackId": "V1",
+      "startFrame": 0,
+      "durationFrames": 414,
+      "sourceInFrame": 0
+    },
+    {
+      "id": "clip_4fdcda8931",
+      "assetId": "asset_d51d2515c6",
+      "trackId": "V1",
+      "startFrame": 1082,
+      "durationFrames": 975,
+      "sourceInFrame": 0
+    },
+    {
+      "id": "clip_13d4430989",
+      "assetId": "asset_d51d2515c6",
+      "trackId": "V1",
+      "startFrame": 2057,
+      "durationFrames": 237,
+      "sourceInFrame": 975
+    },
+    {
+      "id": "clip_9b42d77636",
+      "assetId": "asset_d51d2515c6",
+      "trackId": "V1",
+      "startFrame": 2483,
+      "durationFrames": 402,
+      "sourceInFrame": 1401
+    },
+    {
+      "id": "clip_475b6bcf06",
+      "assetId": "asset_d51d2515c6",
+      "trackId": "V1",
+      "startFrame": 2885,
+      "durationFrames": 1055,
+      "sourceInFrame": 1803
+    }
+  ]
+}

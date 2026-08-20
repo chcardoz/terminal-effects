@@ -1,0 +1,26 @@
+[package]
+name = "terminal-effects"
+version = "0.1.0"
+edition = "2024"
+description = "A video editor rendered directly in the terminal"
+license = "MIT"
+
+[[bin]]
+name = "te"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+font8x8 = "0.3"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+libc = "0.2"
+pixel-core = { git = "https://github.com/zenbu-labs/terminal-browser", rev = "88715294fa6276bb91929811a86e9acb99b7255c" }
+resvg = { version = "0.48.1", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
+uuid = { version = "1.18", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3.21"

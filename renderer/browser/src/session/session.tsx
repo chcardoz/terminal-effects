@@ -88,21 +88,21 @@ const API_PRELOAD_SOURCE = `if (process.isMainFrame) {
   const { ipcRenderer } = require("electron");
   let current = null;
   const subscribers = new Set();
-  ipcRenderer.on("terminal-browser:theme", (_event, theme) => {
+  ipcRenderer.on("terminal-effects-renderer:theme", (_event, theme) => {
     current = theme;
     for (const subscriber of subscribers) {
       try { subscriber(theme); } catch {}
     }
   });
-  ipcRenderer.send("terminal-browser:theme-request");
-  globalThis.terminalBrowser = {
+  ipcRenderer.send("terminal-effects-renderer:theme-request");
+  globalThis.terminalEffectsRenderer = {
     theme: () => current,
     onTheme(subscriber) {
       subscribers.add(subscriber);
       if (current) { try { subscriber(current); } catch {} }
       return () => subscribers.delete(subscriber);
     },
-    quit: () => ipcRenderer.send("terminal-browser:quit"),
+    quit: () => ipcRenderer.send("terminal-effects-renderer:quit"),
   };
 }
 `;
@@ -110,7 +110,7 @@ const API_PRELOAD_SOURCE = `if (process.isMainFrame) {
 let apiPreloadFile: string | null = null;
 function apiPreloadPath(): string {
   if (!apiPreloadFile) {
-    apiPreloadFile = path.join(app.getPath("userData"), "terminal-browser-api-preload.js");
+    apiPreloadFile = path.join(app.getPath("userData"), "terminal-effects-renderer-api-preload.js");
     fs.writeFileSync(apiPreloadFile, API_PRELOAD_SOURCE);
   }
   return apiPreloadFile;
@@ -164,7 +164,7 @@ class Session {
   private readonly onThemeRequest = (event: IpcMainEvent) => {
     if (!this.ownsSender(event)) return;
     const payload = this.themePayload();
-    if (payload) event.sender.send("terminal-browser:theme", payload);
+    if (payload) event.sender.send("terminal-effects-renderer:theme", payload);
   };
   private readonly onQuitRequest = (event: IpcMainEvent) => {
     if (!this.ownsSender(event)) return;
@@ -230,7 +230,7 @@ class Session {
   constructor(ctx: SessionContext) {
     this.ctx = ctx;
     this.terminal = detect(ctx.env);
-    this.marker = `terminal-browser:${ctx.key}`;
+    this.marker = `terminal-effects:${ctx.key}`;
     this.argv = ctx.argv.includes("--app-mode") ? [...ctx.argv, ...APP_MODE_FLAGS] : ctx.argv;
     this.hideToolbar = this.argv.includes("--no-toolbar");
     this.noShortcuts = this.argv.includes("--no-shortcuts");
@@ -336,7 +336,7 @@ class Session {
         this.broadcastTheme();
       },
       onEngineExit: (error) => {
-        if (error) process.stderr.write(`terminal-browser engine: ${error}\n`);
+        if (error) process.stderr.write(`Terminal Effects renderer: ${error}\n`);
         this.shutdown(error ? 1 : 0);
       },
     });
@@ -466,8 +466,8 @@ class Session {
   shutdown(code = 0) {
     if (this.shuttingDown) return;
     this.shuttingDown = true;
-    ipcMain.removeListener("terminal-browser:theme-request", this.onThemeRequest);
-    ipcMain.removeListener("terminal-browser:quit", this.onQuitRequest);
+    ipcMain.removeListener("terminal-effects-renderer:theme-request", this.onThemeRequest);
+    ipcMain.removeListener("terminal-effects-renderer:quit", this.onQuitRequest);
     for (const record of this.records.values()) record.dispose();
     this.records.clear();
     this.shownRecord = null;
@@ -523,14 +523,14 @@ class Session {
     const payload = this.themePayload();
     if (!payload) return;
     this.tabs.eachController((controller) =>
-      controller.sendToPage("terminal-browser:theme", payload),
+      controller.sendToPage("terminal-effects-renderer:theme", payload),
     );
   }
 
   private installEmbedderApi(): void {
     if (!this.preload && !this.mainScript) return;
-    ipcMain.on("terminal-browser:theme-request", this.onThemeRequest);
-    ipcMain.on("terminal-browser:quit", this.onQuitRequest);
+    ipcMain.on("terminal-effects-renderer:theme-request", this.onThemeRequest);
+    ipcMain.on("terminal-effects-renderer:quit", this.onQuitRequest);
     if (this.preload) {
       const ses = browserSession(this.partition);
       registerPreloadOnce(ses, apiPreloadPath());
@@ -1432,7 +1432,7 @@ class Session {
   }
 
   private hostDisplayScale() {
-    const explicit = Number(this.ctx.env.TERMINAL_BROWSER_DISPLAY_SCALE);
+    const explicit = Number(this.ctx.env.TE_RENDERER_DISPLAY_SCALE);
     if (Number.isFinite(explicit) && explicit > 0) return explicit;
     if (this.terminal?.reportsCssPixels) return 1;
     // this is a bit hacky i would like to improve on it
@@ -1497,4 +1497,3 @@ function rememberUrl(url: string) {
     setLastUrl(url);
   } catch { }
 }
-

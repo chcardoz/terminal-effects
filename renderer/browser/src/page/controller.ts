@@ -126,7 +126,7 @@ export class BrowserController {
         contextIsolation: true,
         disableDialogs: true,
         backgroundThrottling: false,
-        additionalArguments: [`--terminal-browser-session=${this.sessionKey}`],
+        additionalArguments: [`--terminal-effects-renderer-session=${this.sessionKey}`],
       },
     });
     if (clipboardRead) allowClipboardRead(this.window.webContents);
@@ -566,7 +566,7 @@ export class BrowserController {
   }
 
   private quitLink(url: string): boolean {
-    if (!url.startsWith("terminal-browser://quit")) return false;
+    if (!url.startsWith("terminal-effects-renderer://quit")) return false;
     setImmediate(() => {
       if (!this.stopped) this.window.close();
     });
@@ -606,7 +606,7 @@ export class BrowserController {
             contextIsolation: true,
             disableDialogs: true,
             backgroundThrottling: false,
-            additionalArguments: [`--terminal-browser-session=${this.sessionKey}`],
+            additionalArguments: [`--terminal-effects-renderer-session=${this.sessionKey}`],
           },
         },
       };
@@ -674,13 +674,12 @@ export class BrowserController {
 }
 
 function browserRenderScale(layout: BrowserSurfaceLayout) {
-  const explicit = Number(process.env.TERMINAL_BROWSER_RENDER_SCALE);
+  const explicit = Number(process.env.TE_RENDERER_RENDER_SCALE);
   if (Number.isFinite(explicit) && explicit > 0) {
     return Math.max(0.5, Math.min(layout.scale, explicit));
   }
-  const maxPixels = Number(process.env.TERMINAL_BROWSER_MAX_PIXELS ?? 0);
+  const maxPixels = Number(process.env.TE_RENDERER_MAX_PIXELS ?? 0);
   if (!Number.isFinite(maxPixels) || maxPixels <= 0) return layout.scale;
   const cssPixels = layout.width * layout.height / (layout.scale * layout.scale);
   return Math.max(0.5, Math.min(layout.scale, Math.sqrt(maxPixels / cssPixels)));
 }
-

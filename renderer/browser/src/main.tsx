@@ -12,7 +12,7 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 
-if (process.env.TERMINAL_BROWSER_DISABLE_GPU === "1") {
+if (process.env.TE_RENDERER_DISABLE_GPU === "1") {
   app.commandLine.appendSwitch("disable-gpu");
 }
 try {
@@ -21,7 +21,7 @@ try {
 } catch {}
 app.commandLine.appendSwitch("enable-logging", "file");
 app.commandLine.appendSwitch("log-file", path.join(LOGS_DIR, "chromium.log"));
-app.setName("terminal-browser");
+app.setName("Terminal Effects Renderer");
 claimProfile();
 
 

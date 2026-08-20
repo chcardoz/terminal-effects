@@ -1077,7 +1077,7 @@ impl Engine {
 const DEFAULT_FRAME_BUDGET_MB_PER_SEC: f32 = 3.0;
 
 fn frame_budget_bytes_per_sec() -> f32 {
-    let configured = std::env::var("TERMINAL_BROWSER_FRAME_BUDGET_MBPS")
+    let configured = std::env::var("TE_RENDERER_FRAME_BUDGET_MBPS")
         .ok()
         .and_then(|value| value.parse::<f32>().ok())
         .filter(|value| *value >= 0.0);

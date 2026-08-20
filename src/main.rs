@@ -44,10 +44,8 @@ enum CommandKind {
         #[arg(long, default_value_t = 4173)]
         port: u16,
     },
-    /// Inspect or install the managed Chromium terminal runtime.
+    /// Inspect the packaged Chromium terminal renderer.
     Runtime {
-        #[arg(long)]
-        install: bool,
         #[arg(long)]
         json: bool,
     },
@@ -266,17 +264,7 @@ fn run() -> Result<()> {
             let project_path = project::open_or_create(path.as_deref().unwrap_or(Path::new(".")))?;
             editor::serve(&project_path, port)
         }
-        Some(CommandKind::Runtime { install, json }) => {
-            if install {
-                let path = runtime::resolve()?;
-                output(
-                    json,
-                    &serde_json::json!({ "ok": true, "path": path, "version": runtime::TERMINAL_BROWSER_VERSION }),
-                )
-            } else {
-                output(json, &runtime::managed_status()?)
-            }
-        }
+        Some(CommandKind::Runtime { json }) => output(json, &runtime::status()),
         Some(command) => run_command(command, cli.project),
     }
 }

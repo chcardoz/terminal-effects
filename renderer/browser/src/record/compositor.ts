@@ -36,7 +36,7 @@ const STILLS_READY_HINT =
 function manifestBase(page: { url: string; title: string }, status: string) {
   return {
     version: 1,
-    kind: "terminal-browser-recording",
+    kind: "terminal-effects-renderer-recording",
     status,
     createdAt: new Date().toISOString(),
     page,

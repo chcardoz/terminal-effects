@@ -431,7 +431,7 @@ impl Terminal {
     }
 
     fn probe_transport(&mut self) -> io::Result<FrameTransport> {
-        if let Some(forced) = std::env::var("TERMINAL_BROWSER_FRAMES")
+        if let Some(forced) = std::env::var("TE_RENDERER_FRAMES")
             .ok()
             .and_then(|value| match value.trim() {
                 "file" => Some(FrameTransport::File),
@@ -455,7 +455,7 @@ impl Terminal {
             "terminal",
             if self.wrapper.relayed() {
                 "no answer about file or shared memory frames under tmux, sending pixels inline — \
-                 check `tmux show -p allow-passthrough`, or set TERMINAL_BROWSER_FRAMES=file"
+                 check `tmux show -p allow-passthrough`, or set TE_RENDERER_FRAMES=file"
             } else {
                 "terminal takes neither file nor shared memory frames, sending pixels inline"
             },
@@ -508,7 +508,7 @@ impl Terminal {
 
     fn frame_path(&self, slot: u64, generation: u64) -> std::path::PathBuf {
         std::env::temp_dir().join(format!(
-            "terminal-browser-{}-{}-{generation}-{slot}.rgba",
+            "terminal-effects-renderer-{}-{}-{generation}-{slot}.rgba",
             std::process::id(),
             self.terminal_id
         ))

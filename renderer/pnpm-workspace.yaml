@@ -1,8 +1,7 @@
 packages:
   - engine/packages/*
-  - engine/examples/*
   - browser
-  - cli
+  - launcher
   - store
   - terminals
 onlyBuiltDependencies:

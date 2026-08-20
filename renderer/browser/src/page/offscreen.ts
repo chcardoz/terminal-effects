@@ -1,7 +1,7 @@
 import { appLog } from "pixel-react";
 
 
-const SHM_FRAMES = process.platform === "linux" && process.env.TERMINAL_BROWSER_SHM !== "0";
+const SHM_FRAMES = process.platform === "linux" && process.env.TE_RENDERER_SHM !== "0";
 
 export function offscreenPreferences(
   deviceScaleFactor: number,

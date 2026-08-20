@@ -8,7 +8,7 @@ use std::process::{Command, Stdio};
 
 const PRELOAD: &str = r#""use strict";
 const { contextBridge } = require("electron");
-const host = globalThis.terminalBrowser;
+const host = globalThis.terminalEffectsRenderer;
 contextBridge.exposeInMainWorld("terminalEffectsHost", {
   quit: () => host && typeof host.quit === "function" && host.quit(),
   theme: () => host && typeof host.theme === "function" ? host.theme() : null,
@@ -58,12 +58,11 @@ pub fn run(project_path: &Path) -> Result<()> {
     let root = project_path
         .parent()
         .context("project file has no parent")?;
-    let browser = runtime::resolve()?;
+    let renderer = runtime::resolve()?;
     let server = EditorServer::start(project_path, 0)?;
     let preload = write_preload(root)?;
     let _session = SessionGuard::write(root, project_path, &server.url)?;
-    let status = Command::new(browser)
-        .arg("open")
+    let status = Command::new(renderer)
         .arg(&server.url)
         .arg("--app-mode")
         .arg(format!("--preload={}", preload.display()))
@@ -72,7 +71,7 @@ pub fn run(project_path: &Path) -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .context("could not start terminal-browser")?;
+        .context("could not start the Terminal Effects renderer")?;
     drop(server);
     if !status.success() {
         bail!("Chromium terminal renderer exited with {status}");

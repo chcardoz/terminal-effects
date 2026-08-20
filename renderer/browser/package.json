@@ -1,5 +1,5 @@
 {
-  "name": "terminal-browser",
+  "name": "terminal-effects-renderer-browser",
   "version": "0.1.0",
   "private": true,
   "main": "dist/main.js",
@@ -7,7 +7,6 @@
     "postinstall": "bash ../scripts/fetch-electron.sh",
     "build": "tsc -p tsconfig.json",
     "build:engine": "pnpm --filter pixel-react build",
-    "start": "pnpm build:engine && pnpm build && pnpm --filter terminal-browser-cli build && exec node ../cli/dist/main.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

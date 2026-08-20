@@ -1,14 +1,14 @@
 # Terminal Effects
 
-A real video editor that runs inside the terminal. Chromium renders the complete
-human interface offscreen; terminal-browser sends those frames to Ghostty, Kitty,
-and other Kitty-graphics terminals. Rust remains the project, editing, media, and
-agent-command backend.
+A real video editor that runs inside the terminal. A Terminal Effects-owned
+renderer uses a pinned Chromium build to render the complete human interface
+offscreen and sends those frames to Ghostty, Kitty, and other Kitty-graphics
+terminals. Rust remains the project, editing, media, and agent-command backend.
 
 ```text
 Vite + React + TypeScript + <video>
         ↓ Chromium offscreen frames
-terminal-browser → Kitty graphics → terminal
+Terminal Effects renderer → Kitty graphics → terminal
         ↕ local authenticated HTTP
 Rust project model + FFmpeg + agent CLI
 ```
@@ -23,9 +23,11 @@ te .
 
 `te .` creates `project.teproj`, imports media in the directory, and opens the graphical terminal editor. Project discovery walks upward from the current directory, like Git.
 
-On the first run, `te` downloads and verifies a pinned terminal-browser runtime
-(about 130 MB). It is stored under `~/.local/share/terminal-effects/`, not in the
-project. Set `TE_TERMINAL_BROWSER_BIN` to use a particular terminal-browser build.
+Release packages contain `te` and its matching Chromium renderer. Nothing is
+downloaded on first launch, and Terminal Effects does not use Chrome or another
+browser installed on the computer. `te runtime --json` shows the packaged
+renderer selected by the executable. `TE_RENDERER_BIN` can select a development
+renderer explicitly.
 
 For ordinary browser development or UI debugging:
 
@@ -44,8 +46,19 @@ cd web
 npm install
 npm run build
 cd ..
+cd renderer
+pnpm install
+pnpm build:runtime
+cd ..
 cargo test
 ```
+
+Renderer sources live in `renderer/`. The packaged runtime contains only the
+Terminal Effects launcher, offscreen browser process, native pixel bridge,
+terminal integration, and pinned Electron/Chromium build. General browser CLI,
+agent-browser, split-pane commands, skills, and browser installation machinery
+are not shipped. Maintainers can produce a complete platform archive with
+`scripts/build-release.sh`.
 
 For Vite hot reload, run `te serve . --port 4173`, copy its session URL, and
 start `npm run dev` from `web/` with `TE_API_TARGET` set to that URL's origin and

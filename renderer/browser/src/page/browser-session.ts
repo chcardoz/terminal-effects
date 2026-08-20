@@ -33,7 +33,7 @@ webFrame.insertCSS("select, ::picker(select) { appearance: base-select !importan
 let selectPreloadFile: string | null = null;
 function selectPreloadPath(): string {
   if (!selectPreloadFile) {
-    selectPreloadFile = path.join(app.getPath("userData"), "terminal-browser-select-preload.js");
+    selectPreloadFile = path.join(app.getPath("userData"), "terminal-effects-renderer-select-preload.js");
     fs.writeFileSync(selectPreloadFile, SELECT_PICKER_PRELOAD);
   }
   return selectPreloadFile;

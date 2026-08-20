@@ -99,7 +99,7 @@ const MARKER_ATTEMPTS = 6;
 
 
 function markerDirectory(): string {
-  const name = `terminal-browser-pane-${process.pid}-`;
+  const name = `terminal-effects-pane-${process.pid}-`;
   try {
     return fs.mkdtempSync(path.join(os.tmpdir(), name));
   } catch {

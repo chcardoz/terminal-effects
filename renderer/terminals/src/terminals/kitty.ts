@@ -6,7 +6,7 @@ import type { Detect, Pane } from "../terminal";
 
 // todo: do this automatically
 const SETUP_HINT = [
-  "kitty has remote control switched off, and terminal-browser needs it to script this terminal.",
+  "kitty has remote control switched off, and Terminal Effects needs it to script this terminal.",
   "Add these two lines to kitty.conf (usually ~/.config/kitty/kitty.conf), then fully quit and reopen kitty:",
   "  allow_remote_control socket-only",
   "  listen_on unix:/tmp/kitty",

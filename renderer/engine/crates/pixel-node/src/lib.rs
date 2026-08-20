@@ -130,7 +130,7 @@ struct Autoprofile {
 // useful for headless profiling
 impl Autoprofile {
     fn from_env(engine: &mut Engine) -> Self {
-        let stop_at = std::env::var("TERMINAL_BROWSER_AUTOPROFILE_MS")
+        let stop_at = std::env::var("TE_RENDERER_AUTOPROFILE_MS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .map(|ms| std::time::Instant::now() + std::time::Duration::from_millis(ms));
@@ -667,4 +667,3 @@ impl PixelEngine {
         Ok(())
     }
 }
-

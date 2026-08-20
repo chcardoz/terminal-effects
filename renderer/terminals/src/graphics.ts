@@ -4,7 +4,7 @@ import type { Terminal } from "./terminal";
 
 export type GraphicsSupport = "supported" | "unsupported" | "unknown";
 
-export const SKIP_ENV = "TERMINAL_BROWSER_SKIP_GRAPHICS_CHECK";
+export const SKIP_ENV = "TE_RENDERER_SKIP_GRAPHICS_CHECK";
 
 const PROBE_ID = 4207;
 
@@ -128,7 +128,7 @@ export function unsupportedGraphicsMessage(color = false): string {
   const sgr = (code: string, text: string) => (color ? `\x1b[${code}m${text}\x1b[0m` : text);
   return [
     "",
-    `  ${sgr("1", "This terminal cannot show images, which terminal-browser needs.")}`,
+    `  ${sgr("1", "This terminal cannot show images, which Terminal Effects needs.")}`,
     "",
     `  ${sgr("2", "We recommend Ghostty:")}`,
     `  ${sgr("4", "https://ghostty.org/download")}`,

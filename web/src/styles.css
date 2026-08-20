@@ -101,8 +101,8 @@ button:disabled { opacity: .3; pointer-events: none; }
 .preview-stage { position: relative; min-height: 0; display: grid; place-items: center; overflow: hidden; background: #090a0c; }
 .preview-stage video, .preview-fallback { position: relative; z-index: 1; max-width: calc(100% - 44px); max-height: calc(100% - 35px); width: auto; height: auto; object-fit: contain; background: black; box-shadow: 0 14px 55px rgba(0,0,0,.42); }
 .preview-fallback { display: none; }
-.preview-stage.is-fallback video { display: none; }
-.preview-stage.is-fallback .preview-fallback { display: block; }
+.preview-stage.is-still video { display: none; }
+.preview-stage.is-still .preview-fallback { display: block; }
 .floating-toolbar { position: absolute; z-index: 5; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid #36373d; border-radius: 5px; background: rgba(29,30,35,.94); box-shadow: 0 8px 28px rgba(0,0,0,.3); }
 .floating-toolbar > button:not(.icon-button) { height: 27px; padding: 0 8px; display: flex; align-items: center; gap: 5px; border-radius: 3px; background: transparent; color: var(--muted); }
 .floating-toolbar button:hover { background: #2a2b31; color: var(--text); }

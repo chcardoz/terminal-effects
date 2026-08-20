@@ -62,7 +62,9 @@ export function PreviewMonitor() {
     if (!playing && video && activeClip && Number.isFinite(video.duration) && Math.abs(video.currentTime - sourceTime) > 0.04) {
       video.currentTime = clamp(sourceTime, 0, video.duration);
     }
-    if (fallback && frameRef.current) frameRef.current.src = `frame?frame=${frame}&revision=${project?.revision ?? 0}`;
+    if ((!playing || fallback) && frameRef.current) {
+      frameRef.current.src = `frame?frame=${frame}&revision=${project?.revision ?? 0}`;
+    }
   }, [frame, playing, activeClip, sourceTime, fallback, project?.revision]);
 
   const stop = useCallback(() => {
@@ -109,7 +111,7 @@ export function PreviewMonitor() {
         <div className="monitor-meta"><span>{project ? `${project.width} × ${project.height}` : "—"}</span><span>{fps.toFixed(fps % 1 ? 2 : 0)} fps</span></div>
       </header>
 
-      <div className={`preview-stage ${fallback ? "is-fallback" : ""}`}>
+      <div className={`preview-stage ${!playing || fallback ? "is-still" : ""}`}>
         {activeAsset && <div className="floating-toolbar" aria-label="Preview tools">
           <button><Ratio size={15} /> 16:9</button>
           <button><Expand size={15} /> Fit</button>

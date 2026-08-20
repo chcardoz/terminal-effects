@@ -63,6 +63,10 @@ enum CommandKind {
         #[arg(long)]
         json: bool,
     },
+    Assets {
+        #[arg(long)]
+        json: bool,
+    },
     Import {
         files: Vec<PathBuf>,
         #[arg(long)]
@@ -93,6 +97,43 @@ enum CommandKind {
     Split {
         clip: String,
         at: String,
+        #[arg(long)]
+        json: bool,
+    },
+    Add {
+        asset: String,
+        #[arg(long)]
+        track: Option<String>,
+        #[arg(long)]
+        at: String,
+        #[arg(long = "source-in", default_value = "0f")]
+        source_in: String,
+        #[arg(long)]
+        duration: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    Duplicate {
+        clip: String,
+        #[arg(long)]
+        track: Option<String>,
+        #[arg(long)]
+        at: String,
+        #[arg(long = "source-in")]
+        source_in: Option<String>,
+        #[arg(long)]
+        duration: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    Append {
+        asset: String,
+        #[arg(long)]
+        track: Option<String>,
+        #[arg(long = "source-in", default_value = "0f")]
+        source_in: String,
+        #[arg(long)]
+        duration: Option<String>,
         #[arg(long)]
         json: bool,
     },
@@ -269,6 +310,50 @@ fn run_command(command: CommandKind, explicit: Option<PathBuf>) -> Result<()> {
                 Ok(())
             }
         }
+        CommandKind::Assets { json } => {
+            if json {
+                let assets = project
+                    .assets
+                    .iter()
+                    .map(|asset| {
+                        serde_json::json!({
+                            "id": asset.id,
+                            "name": asset.name,
+                            "path": asset.path,
+                            "kind": asset.kind,
+                            "durationFrames": asset.duration_frames,
+                            "duration": format_timecode(asset.duration_frames, project.fps),
+                            "width": asset.width,
+                            "height": asset.height,
+                            "hasAudio": asset.has_audio,
+                            "usageCount": project.clips.iter().filter(|clip| clip.asset_id == asset.id).count(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                project::print_json(&serde_json::json!({
+                    "revision": project.revision,
+                    "assets": assets,
+                }))
+            } else {
+                for asset in &project.assets {
+                    let uses = project
+                        .clips
+                        .iter()
+                        .filter(|clip| clip.asset_id == asset.id)
+                        .count();
+                    println!(
+                        "{}  {:?}  {}  {} use{}  {}",
+                        asset.id,
+                        asset.kind,
+                        format_timecode(asset.duration_frames, project.fps),
+                        uses,
+                        if uses == 1 { "" } else { "s" },
+                        asset.name
+                    );
+                }
+                Ok(())
+            }
+        }
         CommandKind::Import { files, json } => {
             if files.is_empty() {
                 bail!("pass one or more media files");
@@ -319,6 +404,78 @@ fn run_command(command: CommandKind, explicit: Option<PathBuf>) -> Result<()> {
         CommandKind::Split { clip, at, json } => {
             let frame = parse_time(&at, project.fps)?;
             output(json, &edit::split(&project_path, &clip, frame)?)
+        }
+        CommandKind::Add {
+            asset,
+            track,
+            at,
+            source_in,
+            duration,
+            json,
+        } => {
+            let at = parse_time(&at, project.fps)?;
+            let source_in = parse_time(&source_in, project.fps)?;
+            let duration = duration
+                .as_deref()
+                .map(|value| parse_time(value, project.fps))
+                .transpose()?;
+            output(
+                json,
+                &edit::add_clip(
+                    &project_path,
+                    &asset,
+                    track.as_deref(),
+                    at,
+                    source_in,
+                    duration,
+                )?,
+            )
+        }
+        CommandKind::Duplicate {
+            clip,
+            track,
+            at,
+            source_in,
+            duration,
+            json,
+        } => {
+            let at = parse_time(&at, project.fps)?;
+            let source_in = source_in
+                .as_deref()
+                .map(|value| parse_time(value, project.fps))
+                .transpose()?;
+            let duration = duration
+                .as_deref()
+                .map(|value| parse_time(value, project.fps))
+                .transpose()?;
+            output(
+                json,
+                &edit::duplicate_clip(
+                    &project_path,
+                    &clip,
+                    track.as_deref(),
+                    at,
+                    source_in,
+                    duration,
+                )?,
+            )
+        }
+        CommandKind::Append {
+            asset,
+            track,
+            source_in,
+            duration,
+            json,
+        } => {
+            let source_in = parse_time(&source_in, project.fps)?;
+            let duration = duration
+                .as_deref()
+                .map(|value| parse_time(value, project.fps))
+                .transpose()?;
+            output(
+                json,
+                &edit::append_clip(&project_path, &asset, track.as_deref(), source_in, duration)?,
+            )
         }
         CommandKind::Move {
             clip,

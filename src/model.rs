@@ -138,6 +138,24 @@ impl Project {
         self.assets.iter().find(|asset| asset.id == id)
     }
 
+    pub fn resolve_asset_index(&self, query: &str) -> Result<usize> {
+        if let Some(index) = self.assets.iter().position(|asset| asset.id == query) {
+            return Ok(index);
+        }
+        let matches = self
+            .assets
+            .iter()
+            .enumerate()
+            .filter(|(_, asset)| asset.id.starts_with(query))
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [index] => Ok(*index),
+            [] => bail!("asset not found: {query}"),
+            _ => bail!("asset prefix is ambiguous: {query}"),
+        }
+    }
+
     pub fn resolve_clip_index(&self, query: &str) -> Result<usize> {
         if let Some(index) = self.clips.iter().position(|clip| clip.id == query) {
             return Ok(index);
@@ -255,5 +273,22 @@ mod tests {
     #[test]
     fn formats_timecode() {
         assert_eq!(format_timecode(45, Fps::default()), "00:00:01.500");
+    }
+
+    #[test]
+    fn resolves_unambiguous_asset_prefixes() {
+        let mut project = Project::empty("test".into());
+        project.assets.push(Asset {
+            id: "asset_abcdef".into(),
+            name: "a.mp4".into(),
+            path: "a.mp4".into(),
+            kind: AssetKind::Video,
+            duration_frames: 30,
+            width: 1920,
+            height: 1080,
+            has_audio: true,
+        });
+        assert_eq!(project.resolve_asset_index("asset_a").unwrap(), 0);
+        assert!(project.resolve_asset_index("missing").is_err());
     }
 }

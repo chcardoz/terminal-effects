@@ -56,7 +56,11 @@ session prefix.
 ```bash
 te status --json
 te timeline
+te assets --json
 te clips --json
+te add asset_ab12 --track V1 --at 0s --source-in 3s --duration 12s --json
+te duplicate clip_ab12 --at 20s --source-in 30s --duration 8s --json
+te append asset_ab12 --source-in 45s --duration 10s --json
 te frame 12.5s --json
 te filmstrip 10s..20s --json
 te screenshot --json
@@ -71,6 +75,13 @@ te export result.mp4 --json
 `te screenshot` returns the current FFmpeg-rendered program frame. IDs accept an
 unambiguous prefix. Times accept frames (`45f`), seconds (`1.5s`), bare seconds,
 or timecodes (`00:01.500`, `00:00:01.500`).
+
+`te add` places an asset at an exact timeline position. `te duplicate` creates a
+new clip from an existing clip's asset and inherits its source range unless an
+override is supplied. `te append` places an asset at the end of its compatible
+track. Duration defaults to the remaining source media for `add` and `append`.
+All three placement commands are undoable and report newly created clip IDs in
+the JSON `created` array.
 
 ## Human editor
 
@@ -91,8 +102,9 @@ FFmpeg and FFprobe must be available on `PATH`.
 
 The browser is presentation, not source of truth. Every interaction is validated
 by the same Rust functions used by the JSON CLI. The editor polls the project for
-external revision changes, so an agent can split, move, trim, import, undo, or
-export while a human has the editor open and the UI updates automatically.
+external revision changes, so an agent can add, duplicate, append, split, move,
+trim, import, undo, or export while a human has the editor open and the UI
+updates automatically.
 
 ## Local demo
 

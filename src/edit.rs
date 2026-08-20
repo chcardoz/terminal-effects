@@ -94,6 +94,140 @@ where
     })
 }
 
+fn track_for_asset(project: &Project, kind: &AssetKind, requested: Option<&str>) -> Result<String> {
+    let compatible = |track_kind: &TrackKind| {
+        matches!(
+            (kind, track_kind),
+            (AssetKind::Video, TrackKind::Video) | (AssetKind::Audio, TrackKind::Audio)
+        )
+    };
+    let track = if let Some(track_id) = requested {
+        project
+            .tracks
+            .iter()
+            .find(|track| track.id == track_id)
+            .with_context(|| format!("track not found: {track_id}"))?
+    } else {
+        project
+            .tracks
+            .iter()
+            .find(|track| compatible(&track.kind))
+            .context("project has no compatible track")?
+    };
+    if !compatible(&track.kind) {
+        bail!("asset cannot be placed on {}", track.id);
+    }
+    Ok(track.id.clone())
+}
+
+fn add_to_project(
+    project: &mut Project,
+    asset_query: &str,
+    track_id: Option<&str>,
+    at_frame: i64,
+    source_in_frame: i64,
+    duration_frames: Option<i64>,
+) -> Result<String> {
+    if at_frame < 0 {
+        bail!("clip start cannot be negative");
+    }
+    if source_in_frame < 0 {
+        bail!("clip source in cannot be negative");
+    }
+    let asset = project.assets[project.resolve_asset_index(asset_query)?].clone();
+    let track_id = track_for_asset(project, &asset.kind, track_id)?;
+    let duration_frames = duration_frames.unwrap_or(asset.duration_frames - source_in_frame);
+    if duration_frames <= 0 {
+        bail!("clip duration must be positive");
+    }
+    if source_in_frame + duration_frames > asset.duration_frames + 1 {
+        bail!("clip extends beyond the source media");
+    }
+    let clip_id = new_id("clip");
+    project.clips.push(Clip {
+        id: clip_id.clone(),
+        asset_id: asset.id,
+        track_id,
+        start_frame: at_frame,
+        duration_frames,
+        source_in_frame,
+    });
+    project.selected_clip_id = Some(clip_id.clone());
+    Ok(clip_id)
+}
+
+pub fn add_clip(
+    project_path: &Path,
+    asset_query: &str,
+    track_id: Option<&str>,
+    at_frame: i64,
+    source_in_frame: i64,
+    duration_frames: Option<i64>,
+) -> Result<EditReport> {
+    mutate(project_path, "add", |project| {
+        let created = add_to_project(
+            project,
+            asset_query,
+            track_id,
+            at_frame,
+            source_in_frame,
+            duration_frames,
+        )?;
+        Ok((Vec::new(), vec![created]))
+    })
+}
+
+pub fn append_clip(
+    project_path: &Path,
+    asset_query: &str,
+    track_id: Option<&str>,
+    source_in_frame: i64,
+    duration_frames: Option<i64>,
+) -> Result<EditReport> {
+    mutate(project_path, "append", |project| {
+        let asset = project.assets[project.resolve_asset_index(asset_query)?].clone();
+        let target_track = track_for_asset(project, &asset.kind, track_id)?;
+        let at_frame = project
+            .clips
+            .iter()
+            .filter(|clip| clip.track_id == target_track)
+            .map(Clip::end_frame)
+            .max()
+            .unwrap_or(0);
+        let created = add_to_project(
+            project,
+            &asset.id,
+            Some(&target_track),
+            at_frame,
+            source_in_frame,
+            duration_frames,
+        )?;
+        Ok((Vec::new(), vec![created]))
+    })
+}
+
+pub fn duplicate_clip(
+    project_path: &Path,
+    clip_query: &str,
+    track_id: Option<&str>,
+    at_frame: i64,
+    source_in_frame: Option<i64>,
+    duration_frames: Option<i64>,
+) -> Result<EditReport> {
+    mutate(project_path, "duplicate", |project| {
+        let source = project.clips[project.resolve_clip_index(clip_query)?].clone();
+        let created = add_to_project(
+            project,
+            &source.asset_id,
+            track_id.or(Some(source.track_id.as_str())),
+            at_frame,
+            source_in_frame.unwrap_or(source.source_in_frame),
+            duration_frames.or(Some(source.duration_frames)),
+        )?;
+        Ok((vec![source.id], vec![created]))
+    })
+}
+
 pub fn split(project_path: &Path, clip_query: &str, at_frame: i64) -> Result<EditReport> {
     mutate(project_path, "split", |project| {
         let index = project.resolve_clip_index(clip_query)?;
@@ -302,5 +436,68 @@ mod tests {
         assert_eq!(project.clips[0].start_frame, 30);
         assert_eq!(project.clips[0].duration_frames, 120);
         assert_eq!(project.clips[0].source_in_frame, 45);
+    }
+
+    #[test]
+    fn add_uses_source_remainder_and_supports_undo_redo() {
+        let (_temp, path) = fixture();
+        let report = add_clip(&path, "asset_a", None, 330, 60, None).unwrap();
+        let created = report.created[0].clone();
+        let project = load(&path).unwrap();
+        let clip = project
+            .clips
+            .iter()
+            .find(|clip| clip.id == created)
+            .unwrap();
+        assert_eq!(clip.track_id, "V1");
+        assert_eq!(clip.start_frame, 330);
+        assert_eq!(clip.source_in_frame, 60);
+        assert_eq!(clip.duration_frames, 240);
+
+        undo(&path).unwrap();
+        assert_eq!(load(&path).unwrap().clips.len(), 1);
+        redo(&path).unwrap();
+        assert_eq!(load(&path).unwrap().clips.len(), 2);
+    }
+
+    #[test]
+    fn append_places_clip_at_end_of_compatible_track() {
+        let (_temp, path) = fixture();
+        let report = append_clip(&path, "asset_a", None, 30, Some(90)).unwrap();
+        let project = load(&path).unwrap();
+        let clip = project
+            .clips
+            .iter()
+            .find(|clip| clip.id == report.created[0])
+            .unwrap();
+        assert_eq!(clip.start_frame, 300);
+        assert_eq!(clip.source_in_frame, 30);
+        assert_eq!(clip.duration_frames, 90);
+    }
+
+    #[test]
+    fn duplicate_can_override_source_range() {
+        let (_temp, path) = fixture();
+        let report = duplicate_clip(&path, "clip_a", None, 400, Some(120), Some(60)).unwrap();
+        let project = load(&path).unwrap();
+        let clip = project
+            .clips
+            .iter()
+            .find(|clip| clip.id == report.created[0])
+            .unwrap();
+        assert_eq!(report.affected, vec!["clip_a"]);
+        assert_eq!(clip.asset_id, "asset_a");
+        assert_eq!(clip.track_id, "V1");
+        assert_eq!(clip.start_frame, 400);
+        assert_eq!(clip.source_in_frame, 120);
+        assert_eq!(clip.duration_frames, 60);
+    }
+
+    #[test]
+    fn add_rejects_ranges_beyond_source_media() {
+        let (_temp, path) = fixture();
+        let error = add_clip(&path, "asset_a", None, 0, 250, Some(60)).unwrap_err();
+        assert!(error.to_string().contains("beyond the source media"));
+        assert_eq!(load(&path).unwrap().clips.len(), 1);
     }
 }

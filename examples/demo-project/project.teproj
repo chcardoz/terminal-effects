@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "name": "demo-project",
-  "revision": 16,
+  "revision": 24,
   "fps": {
     "numerator": 30,
     "denominator": 1
   },
   "width": 1728,
   "height": 1080,
-  "playheadFrame": 1672,
+  "playheadFrame": 2002,
   "selectedClipId": "clip_4fdcda8931",
   "assets": [
     {
@@ -60,14 +60,14 @@
       "assetId": "asset_c8c12cebca",
       "trackId": "V1",
       "startFrame": 0,
-      "durationFrames": 414,
+      "durationFrames": 377,
       "sourceInFrame": 0
     },
     {
       "id": "clip_4fdcda8931",
       "assetId": "asset_d51d2515c6",
       "trackId": "V1",
-      "startFrame": 1082,
+      "startFrame": 377,
       "durationFrames": 975,
       "sourceInFrame": 0
     },

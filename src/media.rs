@@ -172,6 +172,42 @@ pub fn frame_at(
     Ok(output)
 }
 
+pub fn thumbnail(root: &Path, asset: &crate::model::Asset) -> Result<PathBuf> {
+    let output = root.join(format!(".te/cache/thumbnails/{}.jpg", asset.id));
+    if output.is_file() {
+        return Ok(output);
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if asset.kind == AssetKind::Audio {
+        let image = ImageBuffer::from_pixel(480, 270, Rgba([24, 28, 36, 255]));
+        DynamicImage::ImageRgba8(image).save(&output)?;
+        return Ok(output);
+    }
+    let result = Command::new("ffmpeg")
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            "0.1",
+            "-i",
+        ])
+        .arg(resolve_asset_path(root, asset))
+        .args([
+            "-frames:v",
+            "1",
+            "-vf",
+            "scale=480:270:force_original_aspect_ratio=increase,crop=480:270",
+        ])
+        .arg(&output)
+        .output()?;
+    ensure_success("ffmpeg thumbnail extraction", &result)?;
+    Ok(output)
+}
+
 pub fn filmstrip(
     root: &Path,
     project: &Project,

@@ -54,6 +54,7 @@ pub fn ensure_layout(root: &Path) -> Result<()> {
     for relative in [
         ".te/cache/frames",
         ".te/cache/filmstrips",
+        ".te/cache/thumbnails",
         ".te/exports",
         ".te/history/undo",
         ".te/history/redo",

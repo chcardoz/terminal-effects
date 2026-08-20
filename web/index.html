@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Terminal Effects</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="editor-shell" aria-busy="true">
+    <header class="topbar">
+      <div class="brand-block">
+        <span class="brand-mark"><img src="icons/film.svg" alt=""></span>
+        <div>
+          <strong>TERMINAL EFFECTS</strong>
+          <span id="projectPath" class="project-path">Opening project…</span>
+        </div>
+      </div>
+      <div class="history-tools" aria-label="History">
+        <button class="icon-button" id="undoButton" title="Undo (⌘Z)" data-testid="undo"><img src="icons/undo-2.svg" alt=""></button>
+        <button class="icon-button" id="redoButton" title="Redo (⇧⌘Z)" data-testid="redo"><img src="icons/redo-2.svg" alt=""></button>
+        <span class="toolbar-divider"></span>
+        <button class="tool-button active" id="selectTool" title="Selection tool"><img src="icons/mouse-pointer-2.svg" alt=""> Select</button>
+        <button class="tool-button" id="bladeTool" title="Blade tool (B)"><img src="icons/scissors.svg" alt=""> Blade</button>
+      </div>
+      <div class="topbar-actions">
+        <span id="saveState" class="save-state"><span class="state-dot"></span> Saved</span>
+        <button class="secondary-button" id="importButton"><img src="icons/upload.svg" alt=""> Import</button>
+        <button class="primary-button" id="exportButton" data-testid="export"><img src="icons/download.svg" alt=""> Export</button>
+      </div>
+    </header>
+
+    <main class="upper-workspace">
+      <aside class="panel media-panel">
+        <div class="panel-heading">
+          <div><span class="eyebrow">PROJECT</span><h2>Media</h2></div>
+          <button class="icon-button" id="importIconButton" title="Import media"><span class="plus-icon"></span></button>
+        </div>
+        <label class="search-field">
+          <img src="icons/search.svg" alt="">
+          <input id="mediaSearch" type="search" placeholder="Search media" autocomplete="off">
+        </label>
+        <div class="bin-tabs" role="tablist">
+          <button class="bin-tab active" role="tab" aria-selected="true">All media <span id="assetCount">0</span></button>
+        </div>
+        <div id="mediaGrid" class="media-grid" data-testid="media-grid"></div>
+      </aside>
+
+      <section class="viewer-column">
+        <div class="viewer-heading panel-strip">
+          <div><span class="eyebrow">PROGRAM</span><strong id="viewerTitle">No media</strong></div>
+          <div class="viewer-meta"><span id="resolutionLabel">1920 × 1080</span><span id="fpsLabel">30 fps</span></div>
+        </div>
+        <div id="viewerStage" class="viewer-stage" data-testid="viewer">
+          <div class="viewer-grid"></div>
+          <video id="previewVideo" playsinline preload="auto"></video>
+          <img id="previewFallback" alt="Current video frame">
+          <div id="emptyViewer" class="empty-viewer">
+            <img src="icons/film.svg" alt="">
+            <span>Import media to begin editing</span>
+          </div>
+          <div id="loadingViewer" class="viewer-loading">Loading media…</div>
+        </div>
+        <div class="transport panel-strip">
+          <div class="transport-left">
+            <button class="icon-button" id="muteButton" title="Mute"><img src="icons/volume-2.svg" alt=""></button>
+          </div>
+          <div class="transport-center">
+            <button class="icon-button" id="jumpStartButton" title="Go to start"><img src="icons/skip-back.svg" alt=""></button>
+            <button class="icon-button" id="stepBackButton" title="Previous frame"><img src="icons/step-back.svg" alt=""></button>
+            <button class="play-button" id="playButton" title="Play / pause (Space)" data-testid="play"><img src="icons/play.svg" alt=""></button>
+            <button class="icon-button" id="stepForwardButton" title="Next frame"><img src="icons/step-forward.svg" alt=""></button>
+            <button class="icon-button" id="jumpEndButton" title="Go to end"><img src="icons/skip-forward.svg" alt=""></button>
+          </div>
+          <div class="transport-right"><span id="timecode" class="timecode">00:00:00.000</span><span class="time-separator">/</span><span id="durationTimecode" class="duration-code">00:00:00.000</span></div>
+        </div>
+      </section>
+
+      <aside class="panel inspector-panel">
+        <div class="panel-heading inspector-heading">
+          <div><span class="eyebrow">PROPERTIES</span><h2>Inspector</h2></div>
+          <img src="icons/sliders-horizontal.svg" alt="">
+        </div>
+        <div id="inspectorEmpty" class="inspector-empty">
+          <img src="icons/mouse-pointer-2.svg" alt="">
+          <span>Select a timeline clip to edit its properties</span>
+        </div>
+        <form id="inspectorForm" class="inspector-form" hidden>
+          <div class="selected-clip-heading">
+            <span id="selectedClipKind" class="clip-kind">VIDEO</span>
+            <strong id="selectedClipName">Clip</strong>
+            <small id="selectedClipId"></small>
+          </div>
+          <section class="property-section">
+            <h3>Timing</h3>
+            <label><span>Timeline start</span><div class="number-field"><input id="clipStart" type="number" min="0" step="1"><small>fr</small></div></label>
+            <label><span>Source in</span><div class="number-field"><input id="clipSourceIn" type="number" min="0" step="1"><small>fr</small></div></label>
+            <label><span>Duration</span><div class="number-field"><input id="clipDuration" type="number" min="1" step="1"><small>fr</small></div></label>
+          </section>
+          <section class="property-section disabled-properties">
+            <h3>Transform</h3>
+            <label><span>Position</span><div class="dual-value"><b>0</b><b>0</b></div></label>
+            <label><span>Scale</span><div class="number-field"><b>100</b><small>%</small></div></label>
+            <label><span>Opacity</span><div class="number-field"><b>100</b><small>%</small></div></label>
+          </section>
+          <button class="secondary-button apply-button" type="submit">Apply timing</button>
+        </form>
+      </aside>
+    </main>
+
+    <section class="timeline-panel">
+      <div class="timeline-toolbar">
+        <div class="timeline-title"><span class="eyebrow">SEQUENCE</span><strong id="sequenceName">Timeline</strong></div>
+        <div class="edit-actions">
+          <button class="icon-button" id="splitButton" title="Split at playhead (S)"><img src="icons/scissors.svg" alt=""></button>
+          <button class="icon-button" id="deleteButton" title="Delete selected clip"><img src="icons/trash-2.svg" alt=""></button>
+          <span class="toolbar-divider"></span>
+          <button class="icon-button active" id="snapButton" title="Snapping"><img src="icons/magnet.svg" alt=""></button>
+        </div>
+        <div class="zoom-control"><span class="zoom-out">−</span><input id="zoomSlider" type="range" min="20" max="180" value="76" aria-label="Timeline zoom"><span class="zoom-in">+</span></div>
+      </div>
+      <div id="timelineScroller" class="timeline-scroller" data-testid="timeline">
+        <div id="timelineContent" class="timeline-content">
+          <div id="timelineRuler" class="timeline-ruler"></div>
+          <div id="timelineTracks" class="timeline-tracks"></div>
+          <div id="timelinePlayhead" class="timeline-playhead"><span></span></div>
+        </div>
+      </div>
+      <footer class="statusbar">
+        <span id="statusMessage">Ready</span>
+        <span class="status-spacer"></span>
+        <span>Chromium renderer</span><span class="status-divider"></span><span id="revisionLabel">Revision 0</span>
+      </footer>
+    </section>
+  </div>
+
+  <div id="importDialog" class="dialog-backdrop" hidden>
+    <form id="importForm" class="dialog" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+      <div class="dialog-heading"><div><span class="eyebrow">ADD TO PROJECT</span><h2 id="importTitle">Import media</h2></div><button type="button" class="icon-button dialog-close" aria-label="Close">×</button></div>
+      <p>Enter one absolute media path per line. Imported clips are appended to the matching video or audio track.</p>
+      <textarea id="importPaths" rows="5" placeholder="/Users/you/Videos/clip.mp4" autofocus></textarea>
+      <div class="dialog-actions"><button type="button" class="secondary-button dialog-cancel">Cancel</button><button type="submit" class="primary-button">Import files</button></div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>

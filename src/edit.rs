@@ -174,6 +174,39 @@ pub fn remove(project_path: &Path, clip_query: &str) -> Result<EditReport> {
     })
 }
 
+pub fn trim(
+    project_path: &Path,
+    clip_query: &str,
+    start_frame: i64,
+    duration_frames: i64,
+    source_in_frame: i64,
+) -> Result<EditReport> {
+    mutate(project_path, "trim", |project| {
+        if start_frame < 0 {
+            bail!("clip start cannot be negative");
+        }
+        if duration_frames <= 0 {
+            bail!("clip duration must be positive");
+        }
+        if source_in_frame < 0 {
+            bail!("clip source in cannot be negative");
+        }
+        let index = project.resolve_clip_index(clip_query)?;
+        let id = project.clips[index].id.clone();
+        let asset = project
+            .asset(&project.clips[index].asset_id)
+            .context("clip asset missing")?;
+        if source_in_frame + duration_frames > asset.duration_frames + 1 {
+            bail!("trim extends beyond the source media");
+        }
+        project.clips[index].start_frame = start_frame;
+        project.clips[index].duration_frames = duration_frames;
+        project.clips[index].source_in_frame = source_in_frame;
+        project.selected_clip_id = Some(id.clone());
+        Ok((vec![id], Vec::new()))
+    })
+}
+
 pub fn undo(project_path: &Path) -> Result<EditReport> {
     restore(project_path, "undo", "redo", "undo")
 }
@@ -259,5 +292,15 @@ mod tests {
         let project = load(&path).unwrap();
         assert_eq!(project.clips.len(), 1);
         assert_eq!(project.clips[0].duration_frames, 300);
+    }
+
+    #[test]
+    fn trim_updates_all_timing_fields() {
+        let (_temp, path) = fixture();
+        trim(&path, "clip_a", 30, 120, 45).unwrap();
+        let project = load(&path).unwrap();
+        assert_eq!(project.clips[0].start_frame, 30);
+        assert_eq!(project.clips[0].duration_frames, 120);
+        assert_eq!(project.clips[0].source_in_frame, 45);
     }
 }

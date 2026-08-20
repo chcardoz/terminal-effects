@@ -1,11 +1,10 @@
 mod edit;
-mod icons;
+mod editor;
 mod media;
 mod model;
 mod project;
-mod render;
-mod tui;
-mod ui;
+mod runtime;
+mod server;
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
@@ -38,6 +37,19 @@ enum CommandKind {
     },
     Init {
         path: Option<PathBuf>,
+    },
+    /// Run the Chromium editor in a normal browser for development or remote access.
+    Serve {
+        path: Option<PathBuf>,
+        #[arg(long, default_value_t = 4173)]
+        port: u16,
+    },
+    /// Inspect or install the managed Chromium terminal runtime.
+    Runtime {
+        #[arg(long)]
+        install: bool,
+        #[arg(long)]
+        json: bool,
     },
     Status {
         #[arg(long)]
@@ -90,6 +102,17 @@ enum CommandKind {
         track: Option<String>,
         #[arg(long)]
         at: String,
+        #[arg(long)]
+        json: bool,
+    },
+    Trim {
+        clip: String,
+        #[arg(long)]
+        start: String,
+        #[arg(long)]
+        duration: String,
+        #[arg(long = "source-in")]
+        source_in: String,
         #[arg(long)]
         json: bool,
     },
@@ -157,16 +180,31 @@ fn run() -> Result<()> {
         None => {
             let path = cli.path.unwrap_or_else(|| PathBuf::from("."));
             let project_path = project::open_or_create(&path)?;
-            tui::run(&project_path)
+            editor::run(&project_path)
         }
         Some(CommandKind::Open { path }) => {
             let project_path = project::open_or_create(path.as_deref().unwrap_or(Path::new(".")))?;
-            tui::run(&project_path)
+            editor::run(&project_path)
         }
         Some(CommandKind::Init { path }) => {
             let project_path = project::open_or_create(path.as_deref().unwrap_or(Path::new(".")))?;
             println!("{}", project_path.display());
             Ok(())
+        }
+        Some(CommandKind::Serve { path, port }) => {
+            let project_path = project::open_or_create(path.as_deref().unwrap_or(Path::new(".")))?;
+            editor::serve(&project_path, port)
+        }
+        Some(CommandKind::Runtime { install, json }) => {
+            if install {
+                let path = runtime::resolve()?;
+                output(
+                    json,
+                    &serde_json::json!({ "ok": true, "path": path, "version": runtime::TERMINAL_BROWSER_VERSION }),
+                )
+            } else {
+                output(json, &runtime::managed_status()?)
+            }
         }
         Some(command) => run_command(command, cli.project),
     }
@@ -271,10 +309,11 @@ fn run_command(command: CommandKind, explicit: Option<PathBuf>) -> Result<()> {
             )
         }
         CommandKind::Screenshot { output: path, json } => {
-            let output_path = tui::snapshot(&project_path, path.as_deref())?;
+            let output_path =
+                media::frame_at(root, &project, project.playhead_frame, path.as_deref())?;
             output(
                 json,
-                &serde_json::json!({ "ok": true, "revision": project.revision, "path": output_path }),
+                &serde_json::json!({ "ok": true, "kind": "previewFrame", "revision": project.revision, "frame": project.playhead_frame, "path": output_path }),
             )
         }
         CommandKind::Split { clip, at, json } => {
@@ -293,6 +332,21 @@ fn run_command(command: CommandKind, explicit: Option<PathBuf>) -> Result<()> {
                 &edit::move_clip(&project_path, &clip, track.as_deref(), frame)?,
             )
         }
+        CommandKind::Trim {
+            clip,
+            start,
+            duration,
+            source_in,
+            json,
+        } => {
+            let start = parse_time(&start, project.fps)?;
+            let duration = parse_time(&duration, project.fps)?;
+            let source_in = parse_time(&source_in, project.fps)?;
+            output(
+                json,
+                &edit::trim(&project_path, &clip, start, duration, source_in)?,
+            )
+        }
         CommandKind::Remove { clip, json } => output(json, &edit::remove(&project_path, &clip)?),
         CommandKind::Undo { json } => output(json, &edit::undo(&project_path)?),
         CommandKind::Redo { json } => output(json, &edit::redo(&project_path)?),
@@ -308,7 +362,10 @@ fn run_command(command: CommandKind, explicit: Option<PathBuf>) -> Result<()> {
                 &serde_json::json!({ "ok": true, "revision": project.revision, "path": path }),
             )
         }
-        CommandKind::Open { .. } | CommandKind::Init { .. } => unreachable!(),
+        CommandKind::Open { .. }
+        | CommandKind::Init { .. }
+        | CommandKind::Serve { .. }
+        | CommandKind::Runtime { .. } => unreachable!(),
     }
 }
 
@@ -327,7 +384,7 @@ fn status_view<'a>(root: &Path, project: &'a Project) -> StatusView<'a> {
         root: root.display().to_string(),
         revision: project.revision,
         editor: EditorView {
-            running: tui::session_running(root),
+            running: editor::session_running(root),
             playhead_frame: project.playhead_frame,
             playhead: format_timecode(project.playhead_frame, project.fps),
             selected_clip_id: project.selected_clip_id.as_deref(),

@@ -1,5 +1,13 @@
 export type AssetKind = "video" | "audio";
 export type TrackKind = "video" | "audio";
+export type FitMode = "contain" | "cover";
+
+export interface ClipTransform {
+  rotationDegrees: 0 | 90 | 180 | 270;
+  fit: FitMode;
+  positionX: number;
+  positionY: number;
+}
 
 export interface Fps {
   numerator: number;
@@ -28,6 +36,7 @@ export interface Clip {
   sourceInFrame: number;
   filmstripUrl: string;
   waveformUrl: string;
+  transform: ClipTransform;
 }
 
 export interface Track {

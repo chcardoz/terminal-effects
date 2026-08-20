@@ -1,4 +1,4 @@
-use crate::model::{AssetKind, Clip, Project, TrackKind, new_id};
+use crate::model::{AssetKind, Clip, ClipTransform, FitMode, Project, TrackKind, new_id};
 use crate::project::{load, save};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
@@ -151,6 +151,7 @@ fn add_to_project(
         start_frame: at_frame,
         duration_frames,
         source_in_frame,
+        transform: ClipTransform::default(),
     });
     project.selected_clip_id = Some(clip_id.clone());
     Ok(clip_id)
@@ -216,6 +217,7 @@ pub fn duplicate_clip(
 ) -> Result<EditReport> {
     mutate(project_path, "duplicate", |project| {
         let source = project.clips[project.resolve_clip_index(clip_query)?].clone();
+        let source_transform = source.transform.clone();
         let created = add_to_project(
             project,
             &source.asset_id,
@@ -224,7 +226,71 @@ pub fn duplicate_clip(
             source_in_frame.unwrap_or(source.source_in_frame),
             duration_frames.or(Some(source.duration_frames)),
         )?;
+        let created_index = project.resolve_clip_index(&created)?;
+        project.clips[created_index].transform = source_transform;
         Ok((vec![source.id], vec![created]))
+    })
+}
+
+pub fn transform_clip(
+    project_path: &Path,
+    clip_query: &str,
+    rotation_degrees: Option<i16>,
+    fit: Option<FitMode>,
+    position_x: Option<f64>,
+    position_y: Option<f64>,
+    reset: bool,
+) -> Result<EditReport> {
+    mutate(project_path, "transform", |project| {
+        if reset
+            && (rotation_degrees.is_some()
+                || fit.is_some()
+                || position_x.is_some()
+                || position_y.is_some())
+        {
+            bail!("--reset cannot be combined with transform values");
+        }
+        if !reset
+            && rotation_degrees.is_none()
+            && fit.is_none()
+            && position_x.is_none()
+            && position_y.is_none()
+        {
+            bail!("provide --rotate, --fit, --position-x, --position-y, or --reset");
+        }
+        if let Some(rotation) = rotation_degrees
+            && !matches!(rotation, 0 | 90 | 180 | 270)
+        {
+            bail!("rotation must be 0, 90, 180, or 270 degrees");
+        }
+        for (name, position) in [("position x", position_x), ("position y", position_y)] {
+            if let Some(position) = position
+                && (!position.is_finite() || !(0.0..=1.0).contains(&position))
+            {
+                bail!("{name} must be between 0 and 1");
+            }
+        }
+        let index = project.resolve_clip_index(clip_query)?;
+        let id = project.clips[index].id.clone();
+        if reset {
+            project.clips[index].transform = ClipTransform::default();
+        } else {
+            let transform = &mut project.clips[index].transform;
+            if let Some(rotation) = rotation_degrees {
+                transform.rotation_degrees = rotation;
+            }
+            if let Some(fit) = fit {
+                transform.fit = fit;
+            }
+            if let Some(position) = position_x {
+                transform.position_x = position;
+            }
+            if let Some(position) = position_y {
+                transform.position_y = position;
+            }
+        }
+        project.selected_clip_id = Some(id.clone());
+        Ok((vec![id], Vec::new()))
     })
 }
 
@@ -252,6 +318,7 @@ pub fn split(project_path: &Path, clip_query: &str, at_frame: i64) -> Result<Edi
                 start_frame: at_frame,
                 duration_frames: clip.duration_frames - offset,
                 source_in_frame: clip.source_in_frame + offset,
+                transform: clip.transform,
             },
         );
         project.selected_clip_id = Some(right_id.clone());
@@ -399,6 +466,7 @@ mod tests {
             start_frame: 0,
             duration_frames: 300,
             source_in_frame: 0,
+            transform: ClipTransform::default(),
         });
         project.selected_clip_id = Some("clip_a".into());
         let path = project_path(temp.path());
@@ -478,6 +546,16 @@ mod tests {
     #[test]
     fn duplicate_can_override_source_range() {
         let (_temp, path) = fixture();
+        transform_clip(
+            &path,
+            "clip_a",
+            Some(90),
+            Some(FitMode::Cover),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
         let report = duplicate_clip(&path, "clip_a", None, 400, Some(120), Some(60)).unwrap();
         let project = load(&path).unwrap();
         let clip = project
@@ -491,6 +569,8 @@ mod tests {
         assert_eq!(clip.start_frame, 400);
         assert_eq!(clip.source_in_frame, 120);
         assert_eq!(clip.duration_frames, 60);
+        assert_eq!(clip.transform.rotation_degrees, 90);
+        assert_eq!(clip.transform.fit, FitMode::Cover);
     }
 
     #[test]
@@ -499,5 +579,41 @@ mod tests {
         let error = add_clip(&path, "asset_a", None, 0, 250, Some(60)).unwrap_err();
         assert!(error.to_string().contains("beyond the source media"));
         assert_eq!(load(&path).unwrap().clips.len(), 1);
+    }
+
+    #[test]
+    fn transform_is_non_destructive_and_undoable() {
+        let (_temp, path) = fixture();
+        transform_clip(
+            &path,
+            "clip_a",
+            Some(90),
+            Some(FitMode::Cover),
+            Some(0.25),
+            Some(0.75),
+            false,
+        )
+        .unwrap();
+        let project = load(&path).unwrap();
+        assert_eq!(project.clips[0].source_in_frame, 0);
+        assert_eq!(project.clips[0].duration_frames, 300);
+        assert_eq!(project.clips[0].transform.rotation_degrees, 90);
+        assert_eq!(project.clips[0].transform.fit, FitMode::Cover);
+        assert_eq!(project.clips[0].transform.position_x, 0.25);
+        assert_eq!(project.clips[0].transform.position_y, 0.75);
+
+        undo(&path).unwrap();
+        assert_eq!(
+            load(&path).unwrap().clips[0].transform,
+            ClipTransform::default()
+        );
+    }
+
+    #[test]
+    fn transform_rejects_invalid_values_without_history_entry() {
+        let (_temp, path) = fixture();
+        assert!(transform_clip(&path, "clip_a", Some(45), None, None, None, false).is_err());
+        assert!(transform_clip(&path, "clip_a", None, None, Some(1.1), None, false).is_err());
+        assert_eq!(load(&path).unwrap().revision, 0);
     }
 }

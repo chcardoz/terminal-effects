@@ -61,6 +61,34 @@ pub enum TrackKind {
     Audio,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum FitMode {
+    #[default]
+    Contain,
+    Cover,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipTransform {
+    pub rotation_degrees: i16,
+    pub fit: FitMode,
+    pub position_x: f64,
+    pub position_y: f64,
+}
+
+impl Default for ClipTransform {
+    fn default() -> Self {
+        Self {
+            rotation_degrees: 0,
+            fit: FitMode::Contain,
+            position_x: 0.5,
+            position_y: 0.5,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Track {
@@ -78,6 +106,8 @@ pub struct Clip {
     pub start_frame: i64,
     pub duration_frames: i64,
     pub source_in_frame: i64,
+    #[serde(default)]
+    pub transform: ClipTransform,
 }
 
 impl Clip {
@@ -204,6 +234,16 @@ impl Project {
             }
             if clip.start_frame < 0 || clip.duration_frames <= 0 || clip.source_in_frame < 0 {
                 bail!("clip {} has invalid timing", clip.id);
+            }
+            if !matches!(clip.transform.rotation_degrees, 0 | 90 | 180 | 270) {
+                bail!("clip {} has invalid rotation", clip.id);
+            }
+            if !clip.transform.position_x.is_finite()
+                || !clip.transform.position_y.is_finite()
+                || !(0.0..=1.0).contains(&clip.transform.position_x)
+                || !(0.0..=1.0).contains(&clip.transform.position_y)
+            {
+                bail!("clip {} has invalid transform position", clip.id);
             }
             let asset = self.asset(&clip.asset_id).expect("asset checked above");
             if clip.source_in_frame + clip.duration_frames > asset.duration_frames + 1 {

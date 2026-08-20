@@ -7,7 +7,7 @@ mod runtime;
 mod server;
 
 use anyhow::{Context, Result, bail};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use model::{Project, format_timecode, parse_time};
 use serde::Serialize;
 use std::env;
@@ -137,6 +137,21 @@ enum CommandKind {
         #[arg(long)]
         json: bool,
     },
+    Transform {
+        clip: String,
+        #[arg(long)]
+        rotate: Option<i16>,
+        #[arg(long)]
+        fit: Option<FitValue>,
+        #[arg(long = "position-x")]
+        position_x: Option<f64>,
+        #[arg(long = "position-y")]
+        position_y: Option<f64>,
+        #[arg(long)]
+        reset: bool,
+        #[arg(long)]
+        json: bool,
+    },
     Move {
         clip: String,
         #[arg(long)]
@@ -175,6 +190,21 @@ enum CommandKind {
         #[arg(long)]
         json: bool,
     },
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum FitValue {
+    Contain,
+    Cover,
+}
+
+impl From<FitValue> for model::FitMode {
+    fn from(value: FitValue) -> Self {
+        match value {
+            FitValue::Contain => Self::Contain,
+            FitValue::Cover => Self::Cover,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -477,6 +507,26 @@ fn run_command(command: CommandKind, explicit: Option<PathBuf>) -> Result<()> {
                 &edit::append_clip(&project_path, &asset, track.as_deref(), source_in, duration)?,
             )
         }
+        CommandKind::Transform {
+            clip,
+            rotate,
+            fit,
+            position_x,
+            position_y,
+            reset,
+            json,
+        } => output(
+            json,
+            &edit::transform_clip(
+                &project_path,
+                &clip,
+                rotate,
+                fit.map(Into::into),
+                position_x,
+                position_y,
+                reset,
+            )?,
+        ),
         CommandKind::Move {
             clip,
             track,

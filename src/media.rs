@@ -1,4 +1,4 @@
-use crate::model::{AssetKind, Clip, Project};
+use crate::model::{AssetKind, Clip, ClipTransform, FitMode, Project};
 use crate::project::resolve_asset_path;
 use anyhow::{Context, Result, bail};
 use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage, imageops};
@@ -131,6 +131,35 @@ fn selected_video_clip(project: &Project, frame: i64) -> Option<&crate::model::C
         })
 }
 
+fn preview_dimensions(project: &Project) -> (u32, u32) {
+    let width = project.width.max(2) as f64;
+    let height = project.height.max(2) as f64;
+    let scale = (960.0 / width).min(960.0 / height).min(1.0);
+    let even = |value: f64| ((value * scale).round() as u32).max(2) / 2 * 2;
+    (even(width), even(height))
+}
+
+fn transform_filter(width: u32, height: u32, transform: &ClipTransform) -> String {
+    let mut filters = Vec::new();
+    match transform.rotation_degrees {
+        90 => filters.push("transpose=clock".to_string()),
+        180 => filters.extend(["hflip".to_string(), "vflip".to_string()]),
+        270 => filters.push("transpose=cclock".to_string()),
+        _ => {}
+    }
+    match transform.fit {
+        FitMode::Contain => filters.push(format!(
+            "scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black"
+        )),
+        FitMode::Cover => filters.push(format!(
+            "scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}:(iw-ow)*{:.6}:(ih-oh)*{:.6}",
+            transform.position_x, transform.position_y
+        )),
+    }
+    filters.push("setsar=1".to_string());
+    filters.join(",")
+}
+
 pub fn frame_at(
     root: &Path,
     project: &Project,
@@ -149,8 +178,9 @@ pub fn frame_at(
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
     }
+    let (preview_width, preview_height) = preview_dimensions(project);
     let Some(clip) = selected_video_clip(project, frame) else {
-        let image = ImageBuffer::from_pixel(640, 360, Rgba([15, 18, 24, 255]));
+        let image = ImageBuffer::from_pixel(preview_width, preview_height, Rgba([15, 18, 24, 255]));
         DynamicImage::ImageRgba8(image).save(&output)?;
         return Ok(output);
     };
@@ -165,7 +195,12 @@ pub fn frame_at(
         .arg(format!("{source_seconds:.6}"))
         .arg("-i")
         .arg(media)
-        .args(["-frames:v", "1", "-vf", "scale=960:540:force_original_aspect_ratio=decrease,pad=960:540:(ow-iw)/2:(oh-ih)/2:color=black"])
+        .args(["-frames:v", "1", "-vf"])
+        .arg(transform_filter(
+            preview_width,
+            preview_height,
+            &clip.transform,
+        ))
         .arg(&output)
         .output()?;
     ensure_success("ffmpeg frame extraction", &result)?;
@@ -362,8 +397,9 @@ pub fn export(root: &Path, project: &Project, output: &Path) -> Result<()> {
         let timeline_start = project.fps.frames_to_seconds(clip.start_frame);
         let timeline_end = project.fps.frames_to_seconds(clip.end_frame());
         if asset.kind == AssetKind::Video {
+            let visual = transform_filter(width, height, &clip.transform);
             filters.push(format!(
-                "[{input}:v:0]trim=start={source_start:.6}:end={source_end:.6},setpts=PTS-STARTPTS+{timeline_start:.6}/TB,scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black[v{input}]"
+                "[{input}:v:0]trim=start={source_start:.6}:end={source_end:.6},setpts=PTS-STARTPTS+{timeline_start:.6}/TB,{visual}[v{input}]"
             ));
             filters.push(format!(
                 "[base{video_layer}][v{input}]overlay=eof_action=pass:shortest=0:enable='between(t,{timeline_start:.6},{timeline_end:.6})'[base{}]",

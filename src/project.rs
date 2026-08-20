@@ -1,5 +1,5 @@
 use crate::media::{MediaProbe, is_media_path, probe_media};
-use crate::model::{Asset, AssetKind, Clip, PROJECT_FILE, Project, new_id};
+use crate::model::{Asset, AssetKind, Clip, ClipTransform, PROJECT_FILE, Project, new_id};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use std::fs;
@@ -175,6 +175,7 @@ fn import_one(root: &Path, project: &mut Project, file: &Path) -> Result<String>
         start_frame,
         duration_frames,
         source_in_frame: 0,
+        transform: ClipTransform::default(),
     });
     if project.selected_clip_id.is_none() {
         project.selected_clip_id = Some(clip_id);

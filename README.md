@@ -61,6 +61,7 @@ te clips --json
 te add asset_ab12 --track V1 --at 0s --source-in 3s --duration 12s --json
 te duplicate clip_ab12 --at 20s --source-in 30s --duration 8s --json
 te append asset_ab12 --source-in 45s --duration 10s --json
+te transform clip_ab12 --rotate 90 --fit cover --position-x 0.5 --position-y 0.35 --json
 te frame 12.5s --json
 te filmstrip 10s..20s --json
 te screenshot --json
@@ -82,6 +83,13 @@ override is supplied. `te append` places an asset at the end of its compatible
 track. Duration defaults to the remaining source media for `add` and `append`.
 All three placement commands are undoable and report newly created clip IDs in
 the JSON `created` array.
+
+`te transform` changes only a clip's presentation. Rotation is absolute and
+accepts `0`, `90`, `180`, or `270` degrees. `contain` preserves the entire frame;
+`cover` fills the project frame and uses normalized focal positions from `0` to
+`1`. Use `te transform CLIP --reset` to restore centered, unrotated `contain`.
+Transforms are non-destructive, undoable, and applied consistently to browser
+playback, FFmpeg previews, filmstrips, and exports.
 
 ## Human editor
 

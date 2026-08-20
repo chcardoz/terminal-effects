@@ -35,6 +35,13 @@ export function PreviewMonitor() {
   }, [project, frame]);
   const activeAsset = project?.assets.find((asset) => asset.id === activeClip?.assetId);
   const sourceTime = activeClip ? (activeClip.sourceInFrame + frame - activeClip.startFrame) / fps : 0;
+  const transform = activeClip?.transform;
+  const rotation = transform?.rotationDegrees ?? 0;
+  const quarterTurn = rotation === 90 || rotation === 270;
+  const videoTransform = quarterTurn
+    ? `translate(-50%, -50%) rotate(${rotation}deg)`
+    : `rotate(${rotation}deg)`;
+  const ratio = project ? aspectRatio(project.width, project.height) : "16:9";
 
   useEffect(() => {
     const video = videoRef.current;
@@ -113,12 +120,26 @@ export function PreviewMonitor() {
 
       <div className={`preview-stage ${!playing || fallback ? "is-still" : ""}`}>
         {activeAsset && <div className="floating-toolbar" aria-label="Preview tools">
-          <button><Ratio size={15} /> 16:9</button>
-          <button><Expand size={15} /> Fit</button>
+          <button><Ratio size={15} /> {ratio}</button>
+          <button><Expand size={15} /> {transform?.fit === "cover" ? "Cover" : "Contain"}</button>
           <IconButton label="Fullscreen"><Maximize2 size={15} /></IconButton>
         </div>}
-        <video ref={videoRef} muted={muted} playsInline preload="auto" onError={() => { setFallback(true); setLoading(false); setStatus("Using FFmpeg preview for this codec"); }} />
-        <img ref={frameRef} className="preview-fallback" alt="Current program frame" />
+        <div className="preview-surface" style={{ aspectRatio: project ? `${project.width} / ${project.height}` : "16 / 9" }}>
+          <video
+            ref={videoRef}
+            className={quarterTurn ? "is-quarter-turn" : ""}
+            style={{
+              objectFit: transform?.fit ?? "contain",
+              objectPosition: `${(transform?.positionX ?? 0.5) * 100}% ${(transform?.positionY ?? 0.5) * 100}%`,
+              transform: videoTransform,
+            }}
+            muted={muted}
+            playsInline
+            preload="auto"
+            onError={() => { setFallback(true); setLoading(false); setStatus("Using FFmpeg preview for this codec"); }}
+          />
+          <img ref={frameRef} className="preview-fallback" alt="Current program frame" />
+        </div>
         {!activeClip && <div className="empty-stage"><Play size={29} /><strong>{hasMedia ? "Move the playhead over a clip" : "Import media to start editing"}</strong><span>The program monitor shows your final sequence.</span></div>}
         {loading && <span className="preview-loading">Loading preview…</span>}
       </div>
@@ -139,4 +160,10 @@ export function PreviewMonitor() {
       </footer>
     </section>
   );
+}
+
+function aspectRatio(width: number, height: number) {
+  const gcd = (left: number, right: number): number => right ? gcd(right, left % right) : left;
+  const divisor = gcd(width, height);
+  return `${width / divisor}:${height / divisor}`;
 }

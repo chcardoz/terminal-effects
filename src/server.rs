@@ -178,6 +178,21 @@ fn route(mut request: Request, project_path: &Path, prefix: &str) -> Result<()> 
             })();
             respond_api_result(request, result)
         }
+        (&Method::Post, "api/transform") => {
+            let result = (|| {
+                let body: TransformBody = read_json(&mut request)?;
+                edit::transform_clip(
+                    project_path,
+                    &body.clip_id,
+                    body.rotation_degrees,
+                    body.fit,
+                    body.position_x,
+                    body.position_y,
+                    body.reset,
+                )
+            })();
+            respond_api_result(request, result)
+        }
         (&Method::Post, "api/remove") => {
             let result = (|| {
                 let body: ClipBody = read_json(&mut request)?;
@@ -241,7 +256,7 @@ fn project_response(request: Request, project_path: &Path) -> Result<()> {
         .context("serialized clips are not an array")?;
     for clip in clips {
         let id = clip["id"].as_str().unwrap_or_default().to_string();
-        clip["filmstripUrl"] = json!(format!("filmstrip/{id}"));
+        clip["filmstripUrl"] = json!(format!("filmstrip/{id}?revision={}", value.revision));
         clip["waveformUrl"] = json!(format!("waveform/{id}"));
     }
     respond_json(
@@ -470,6 +485,18 @@ struct TrimBody {
     start_frame: i64,
     source_in_frame: i64,
     duration_frames: i64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TransformBody {
+    clip_id: String,
+    rotation_degrees: Option<i16>,
+    fit: Option<crate::model::FitMode>,
+    position_x: Option<f64>,
+    position_y: Option<f64>,
+    #[serde(default)]
+    reset: bool,
 }
 
 #[derive(Deserialize)]

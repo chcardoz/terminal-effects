@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "name": "demo-project",
-  "revision": 24,
+  "revision": 45,
   "fps": {
     "numerator": 30,
     "denominator": 1
   },
   "width": 1728,
   "height": 1080,
-  "playheadFrame": 2002,
+  "playheadFrame": 1033,
   "selectedClipId": "clip_4fdcda8931",
   "assets": [
     {
@@ -56,44 +56,28 @@
   ],
   "clips": [
     {
-      "id": "clip_0539940290",
-      "assetId": "asset_c8c12cebca",
-      "trackId": "V1",
-      "startFrame": 0,
-      "durationFrames": 377,
-      "sourceInFrame": 0
-    },
-    {
       "id": "clip_4fdcda8931",
       "assetId": "asset_d51d2515c6",
       "trackId": "V1",
-      "startFrame": 377,
-      "durationFrames": 975,
+      "startFrame": 369,
+      "durationFrames": 1434,
       "sourceInFrame": 0
     },
     {
-      "id": "clip_13d4430989",
+      "id": "clip_d58b6c14f6",
       "assetId": "asset_d51d2515c6",
       "trackId": "V1",
-      "startFrame": 2057,
-      "durationFrames": 237,
-      "sourceInFrame": 975
+      "startFrame": 1803,
+      "durationFrames": 467,
+      "sourceInFrame": 2391
     },
     {
-      "id": "clip_9b42d77636",
-      "assetId": "asset_d51d2515c6",
+      "id": "clip_c023452f24",
+      "assetId": "asset_f6f78c70dc",
       "trackId": "V1",
-      "startFrame": 2483,
-      "durationFrames": 402,
-      "sourceInFrame": 1401
-    },
-    {
-      "id": "clip_475b6bcf06",
-      "assetId": "asset_d51d2515c6",
-      "trackId": "V1",
-      "startFrame": 2885,
-      "durationFrames": 1055,
-      "sourceInFrame": 1803
+      "startFrame": 0,
+      "durationFrames": 369,
+      "sourceInFrame": 0
     }
   ]
 }

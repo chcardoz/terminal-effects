@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { DAEMON_SOCKET, LOGS_DIR, ensureDataDir } from "pixel-store";
 import { checkTerminal, detect, unsupportedGraphicsMessage } from "pixel-terminals";
+import { installApparmorProfile, linuxSandboxError } from "./sandbox";
 
 const DIST_ROOT = process.env.TE_RENDERER_DIST_ROOT ?? null;
 delete process.env.ELECTRON_RUN_AS_NODE;
@@ -43,6 +44,16 @@ function browserLaunchCommand(): { command: string[]; cwd: string } {
   const main = browserMain();
   for (const required of [electron, main]) {
     if (!fs.existsSync(required)) fail(`packaged renderer is missing ${required}`);
+  }
+  if (process.platform === "linux") {
+    let sandboxError = linuxSandboxError(electron);
+    if (sandboxError) {
+      try {
+        installApparmorProfile(electron);
+      } catch {}
+      sandboxError = linuxSandboxError(electron);
+    }
+    if (sandboxError) fail(sandboxError);
   }
   const chromiumArgs =
     process.platform === "linux" && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY

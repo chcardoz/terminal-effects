@@ -1,16 +1,47 @@
 {
   "schemaVersion": 1,
   "name": "demo-project",
-  "revision": 0,
+  "revision": 1,
   "fps": {
     "numerator": 30,
     "denominator": 1
   },
-  "width": 1920,
-  "height": 1080,
+  "width": 1080,
+  "height": 1920,
   "playheadFrame": 0,
-  "selectedClipId": null,
-  "assets": [],
+  "selectedClipId": "clip_1a251ece4e",
+  "assets": [
+    {
+      "id": "asset_2c0b31f45c",
+      "name": "IMG_6713.MOV",
+      "path": "IMG_6713.MOV",
+      "kind": "video",
+      "durationFrames": 336,
+      "width": 1080,
+      "height": 1920,
+      "hasAudio": true
+    },
+    {
+      "id": "asset_3ccf88b3ab",
+      "name": "IMG_6714.MOV",
+      "path": "IMG_6714.MOV",
+      "kind": "video",
+      "durationFrames": 441,
+      "width": 1080,
+      "height": 1920,
+      "hasAudio": true
+    },
+    {
+      "id": "asset_86a59f4fb9",
+      "name": "IMG_6715.MOV",
+      "path": "IMG_6715.MOV",
+      "kind": "video",
+      "durationFrames": 293,
+      "width": 1920,
+      "height": 1080,
+      "hasAudio": true
+    }
+  ],
   "tracks": [
     {
       "id": "V1",
@@ -23,5 +54,30 @@
       "name": "Audio 1"
     }
   ],
-  "clips": []
+  "clips": [
+    {
+      "id": "clip_1a251ece4e",
+      "assetId": "asset_2c0b31f45c",
+      "trackId": "V1",
+      "startFrame": 0,
+      "durationFrames": 336,
+      "sourceInFrame": 0
+    },
+    {
+      "id": "clip_7f3ee883db",
+      "assetId": "asset_3ccf88b3ab",
+      "trackId": "V1",
+      "startFrame": 336,
+      "durationFrames": 441,
+      "sourceInFrame": 0
+    },
+    {
+      "id": "clip_c1f5cbf409",
+      "assetId": "asset_86a59f4fb9",
+      "trackId": "V1",
+      "startFrame": 777,
+      "durationFrames": 293,
+      "sourceInFrame": 0
+    }
+  ]
 }

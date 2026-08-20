@@ -108,10 +108,11 @@ updates automatically.
 
 ## Local demo
 
-This checkout includes a gitignored, real-media demo project prepared from videos already on this machine:
+This checkout includes an empty staging project for local media experiments:
 
 ```bash
 cd examples/demo-project
+cp /path/to/your/clips/*.mp4 .
 te .
 ```
 

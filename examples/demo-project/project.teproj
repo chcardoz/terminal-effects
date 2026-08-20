@@ -1,47 +1,16 @@
 {
   "schemaVersion": 1,
   "name": "demo-project",
-  "revision": 45,
+  "revision": 0,
   "fps": {
     "numerator": 30,
     "denominator": 1
   },
-  "width": 1728,
+  "width": 1920,
   "height": 1080,
-  "playheadFrame": 1033,
-  "selectedClipId": "clip_4fdcda8931",
-  "assets": [
-    {
-      "id": "asset_c8c12cebca",
-      "name": "twitter-launch.mp4",
-      "path": "twitter-launch.mp4",
-      "kind": "video",
-      "durationFrames": 1082,
-      "width": 1728,
-      "height": 1080,
-      "hasAudio": true
-    },
-    {
-      "id": "asset_d51d2515c6",
-      "name": "yc-app.mp4",
-      "path": "yc-app.mp4",
-      "kind": "video",
-      "durationFrames": 2858,
-      "width": 1360,
-      "height": 720,
-      "hasAudio": true
-    },
-    {
-      "id": "asset_f6f78c70dc",
-      "name": "yc-intro.mp4",
-      "path": "yc-intro.mp4",
-      "kind": "video",
-      "durationFrames": 2281,
-      "width": 720,
-      "height": 404,
-      "hasAudio": true
-    }
-  ],
+  "playheadFrame": 0,
+  "selectedClipId": null,
+  "assets": [],
   "tracks": [
     {
       "id": "V1",
@@ -54,30 +23,5 @@
       "name": "Audio 1"
     }
   ],
-  "clips": [
-    {
-      "id": "clip_4fdcda8931",
-      "assetId": "asset_d51d2515c6",
-      "trackId": "V1",
-      "startFrame": 369,
-      "durationFrames": 1434,
-      "sourceInFrame": 0
-    },
-    {
-      "id": "clip_d58b6c14f6",
-      "assetId": "asset_d51d2515c6",
-      "trackId": "V1",
-      "startFrame": 1803,
-      "durationFrames": 467,
-      "sourceInFrame": 2391
-    },
-    {
-      "id": "clip_c023452f24",
-      "assetId": "asset_f6f78c70dc",
-      "trackId": "V1",
-      "startFrame": 0,
-      "durationFrames": 369,
-      "sourceInFrame": 0
-    }
-  ]
+  "clips": []
 }

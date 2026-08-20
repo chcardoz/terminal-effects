@@ -1,11 +1,15 @@
 # Examples
 
-`demo-project/` is a local test project populated from media already on this machine. Video files and generated `.te/` caches are intentionally ignored by Git; `project.teproj` remains readable so the project model can be inspected.
+`demo-project/` is an empty staging project for agent-editing experiments. Add
+media files to that directory, then import them from the UI or with `te import`.
+Video files and generated `.te/` caches are intentionally ignored by Git;
+`project.teproj` remains tracked so each editing experiment can be reviewed.
 
 From the demo directory:
 
 ```bash
 cd examples/demo-project
+cp /path/to/your/clips/*.mp4 .
 te .
 ```
 

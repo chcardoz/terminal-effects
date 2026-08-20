@@ -160,6 +160,27 @@ fn transform_filter(width: u32, height: u32, transform: &ClipTransform) -> Strin
     filters.join(",")
 }
 
+fn contain_thumbnail(source: &RgbaImage, width: u32, height: u32) -> RgbaImage {
+    let scale = (width as f64 / source.width().max(1) as f64)
+        .min(height as f64 / source.height().max(1) as f64);
+    let resized_width = ((source.width() as f64 * scale).round() as u32).max(1);
+    let resized_height = ((source.height() as f64 * scale).round() as u32).max(1);
+    let resized = imageops::resize(
+        source,
+        resized_width,
+        resized_height,
+        imageops::FilterType::Triangle,
+    );
+    let mut canvas = RgbaImage::from_pixel(width, height, Rgba([10, 12, 16, 255]));
+    imageops::overlay(
+        &mut canvas,
+        &resized,
+        ((width - resized_width) / 2) as i64,
+        ((height - resized_height) / 2) as i64,
+    );
+    canvas
+}
+
 pub fn frame_at(
     root: &Path,
     project: &Project,
@@ -269,12 +290,7 @@ pub fn filmstrip(
         let position = index as f64 / (count - 1) as f64;
         let frame = start + ((end - start) as f64 * position).round() as i64;
         let path = frame_at(root, project, frame, None)?;
-        let thumb = imageops::resize(
-            &image::open(path)?.to_rgba8(),
-            240,
-            135,
-            imageops::FilterType::Triangle,
-        );
+        let thumb = contain_thumbnail(&image::open(path)?.to_rgba8(), 240, 135);
         imageops::overlay(&mut strip, &thumb, (index as i64) * 240, 0);
     }
     DynamicImage::ImageRgba8(strip).save(&output)?;
@@ -303,12 +319,7 @@ pub fn clip_filmstrip(
         let position = index as f64 / (count - 1) as f64;
         let offset = ((clip.duration_frames.saturating_sub(1)) as f64 * position).round() as i64;
         let path = frame_at(root, project, clip.start_frame + offset, None)?;
-        let thumb = imageops::resize(
-            &image::open(path)?.to_rgba8(),
-            160,
-            90,
-            imageops::FilterType::Triangle,
-        );
+        let thumb = contain_thumbnail(&image::open(path)?.to_rgba8(), 160, 90);
         imageops::overlay(&mut strip, &thumb, (index as i64) * 160, 0);
     }
     DynamicImage::ImageRgba8(strip).save(&output)?;

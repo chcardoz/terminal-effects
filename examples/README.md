@@ -18,3 +18,10 @@ te clips --json
 te filmstrip 0s..12s --json
 te screenshot --json
 ```
+
+To inspect the Chromium UI in a normal browser instead of through the terminal
+frame transport:
+
+```bash
+te serve . --port 4173
+```

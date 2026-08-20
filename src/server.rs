@@ -213,12 +213,7 @@ fn route(mut request: Request, project_path: &Path, prefix: &str) -> Result<()> 
         }
         _ => respond_json(request, StatusCode(404), &json!({ "error": "Not found" })),
     };
-    if let Err(error) = result {
-        // Request validation and edit errors belong in the UI, not in a dropped connection.
-        // At this point request ownership may already be consumed by a response, so only
-        // propagate I/O response errors; handler errors are caught before responding below.
-        return Err(error);
-    }
+    result?;
     Ok(())
 }
 

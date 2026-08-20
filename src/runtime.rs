@@ -22,11 +22,13 @@ pub fn resolve() -> Result<PathBuf> {
         }
         return Ok(path);
     }
-    if let Some(path) = find_on_path("terminal-browser") {
+    if let Some(path) = find_on_path("terminal-browser")
+        && browser_version(&path).is_ok_and(|version| version == TERMINAL_BROWSER_VERSION)
+    {
         return Ok(path);
     }
     let system = data_home()?.join("terminal-browser/app/bin/terminal-browser");
-    if system.is_file() {
+    if system.is_file() && managed_version(&system)? == TERMINAL_BROWSER_VERSION {
         return Ok(system);
     }
     let managed = managed_root()?.join("bin/terminal-browser");
@@ -57,6 +59,22 @@ fn managed_version(bin: &Path) -> Result<String> {
         .unwrap_or_default()
         .trim()
         .to_string())
+}
+
+fn browser_version(bin: &Path) -> Result<String> {
+    let output = Command::new(bin)
+        .arg("--version")
+        .output()
+        .with_context(|| format!("could not run {}", bin.display()))?;
+    if !output.status.success() {
+        bail!("{} --version failed", bin.display());
+    }
+    let output = String::from_utf8_lossy(&output.stdout);
+    output
+        .split_whitespace()
+        .find(|part| part.starts_with('v'))
+        .map(str::to_string)
+        .context("terminal-browser did not print a version")
 }
 
 fn install_managed() -> Result<PathBuf> {

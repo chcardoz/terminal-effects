@@ -1,16 +1,37 @@
 {
   "schemaVersion": 1,
   "name": "demo-project",
-  "revision": 0,
+  "revision": 30,
   "fps": {
     "numerator": 30,
     "denominator": 1
   },
-  "width": 1920,
-  "height": 1080,
-  "playheadFrame": 0,
-  "selectedClipId": null,
-  "assets": [],
+  "width": 640,
+  "height": 360,
+  "playheadFrame": 86,
+  "selectedClipId": "clip_0653eeccc5",
+  "assets": [
+    {
+      "id": "asset_3346b13f33",
+      "name": "checker-a.mp4",
+      "path": "/Users/chcardoz/conductor/workspaces/terminal-effects/riga/.context/media-e2e.fZW95u/checker-a.mp4",
+      "kind": "video",
+      "durationFrames": 90,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    {
+      "id": "asset_ab8c2cfbe8",
+      "name": "bars-b.mp4",
+      "path": "/Users/chcardoz/conductor/workspaces/terminal-effects/riga/.context/media-e2e.fZW95u/bars-b.mp4",
+      "kind": "video",
+      "durationFrames": 75,
+      "width": 854,
+      "height": 480,
+      "hasAudio": true
+    }
+  ],
   "tracks": [
     {
       "id": "V1",
@@ -23,5 +44,62 @@
       "name": "Audio 1"
     }
   ],
-  "clips": []
+  "clips": [
+    {
+      "id": "clip_a71b5fa0c8",
+      "assetId": "asset_3346b13f33",
+      "trackId": "V1",
+      "startFrame": 0,
+      "durationFrames": 42,
+      "sourceInFrame": 0,
+      "transform": {
+        "rotationDegrees": 0,
+        "fit": "contain",
+        "positionX": 0.5,
+        "positionY": 0.5
+      }
+    },
+    {
+      "id": "clip_c89fdc34f1",
+      "assetId": "asset_3346b13f33",
+      "trackId": "V1",
+      "startFrame": 56,
+      "durationFrames": 18,
+      "sourceInFrame": 42,
+      "transform": {
+        "rotationDegrees": 0,
+        "fit": "contain",
+        "positionX": 0.5,
+        "positionY": 0.5
+      }
+    },
+    {
+      "id": "clip_8c51051678",
+      "assetId": "asset_ab8c2cfbe8",
+      "trackId": "V1",
+      "startFrame": 42,
+      "durationFrames": 14,
+      "sourceInFrame": 0,
+      "transform": {
+        "rotationDegrees": 0,
+        "fit": "contain",
+        "positionX": 0.5,
+        "positionY": 0.5
+      }
+    },
+    {
+      "id": "clip_0653eeccc5",
+      "assetId": "asset_ab8c2cfbe8",
+      "trackId": "V1",
+      "startFrame": 74,
+      "durationFrames": 38,
+      "sourceInFrame": 14,
+      "transform": {
+        "rotationDegrees": 0,
+        "fit": "contain",
+        "positionX": 0.5,
+        "positionY": 0.5
+      }
+    }
+  ]
 }

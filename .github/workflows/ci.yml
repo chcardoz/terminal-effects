@@ -24,33 +24,28 @@ jobs:
           rustup toolchain install stable --profile minimal --component clippy,rustfmt
           rustup default stable
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Enable pnpm
-        run: corepack enable
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Check Rust
         run: |
-          cargo fmt --check
-          cargo clippy --all-targets -- -D warnings
-          cargo test
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
 
-      - name: Check web interface
-        working-directory: web
-        run: |
-          npm ci
-          npm run check
-          npm run build
-
-      - name: Check renderer
-        working-directory: renderer
+      - name: Install JavaScript workspace
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
-          pnpm check
+
+      - name: Check JavaScript workspace
+        run: pnpm check
 
       - name: Test installer
-        run: ./scripts/test-installer.sh
+        run: pnpm test:installer

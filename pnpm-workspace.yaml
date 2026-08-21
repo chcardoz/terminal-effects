@@ -1,0 +1,8 @@
+packages:
+  - apps/editor
+  - apps/renderer/browser
+  - apps/renderer/launcher
+  - packages/*
+
+onlyBuiltDependencies:
+  - esbuild

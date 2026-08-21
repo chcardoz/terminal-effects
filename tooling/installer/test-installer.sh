@@ -29,6 +29,7 @@ TE_INSTALL_TARGET="$TARGET" \
 TE_INSTALL_RELEASE_BASE="file://$RELEASES" \
 TE_INSTALL_DATA_DIR="$TEST_ROOT/data" \
 TE_INSTALL_BIN_DIR="$TEST_ROOT/bin" \
+TE_INSTALLER_URL="file://$ROOT/tooling/installer/install.sh" \
   "$ROOT/install.sh" >/dev/null
 
 [ -L "$TEST_ROOT/bin/te" ]

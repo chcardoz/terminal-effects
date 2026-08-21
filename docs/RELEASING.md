@@ -55,6 +55,9 @@ only to the tap using its repository-scoped GitHub token.
 
 ## Direct installer
 
-`install.sh` always downloads the assets behind GitHub's latest stable-release
-redirect. Publishing a stable release therefore updates the curl installation
-path without changing the script. Prereleases do not affect it.
+The root `install.sh` is a stable public bootstrap for the documented raw
+GitHub URL. It downloads the implementation in
+`tooling/installer/install.sh`, which then downloads the assets behind GitHub's
+latest stable-release redirect. Publishing a stable release therefore updates
+the curl installation path without changing either script. Prereleases do not
+affect it.

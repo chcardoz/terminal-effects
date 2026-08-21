@@ -50,8 +50,7 @@ jobs:
         working-directory: renderer
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
-          pnpm typecheck
-          pnpm --filter pixel-terminals test
+          pnpm check
 
       - name: Test installer
         run: ./scripts/test-installer.sh

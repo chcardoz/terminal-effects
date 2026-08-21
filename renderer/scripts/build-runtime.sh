@@ -32,6 +32,7 @@ if [ "$TARGET" = darwin-arm64 ]; then
   codesign --force --sign - --timestamp=none "$STAGE/bin/native-scroll-helper" 2>/dev/null || true
 fi
 
+(cd "$ROOT" && pnpm build:packages)
 "$ROOT/scripts/bundle.sh" "$ROOT/launcher/src/main.ts" "$STAGE/launcher/dist/main.js"
 "$ROOT/scripts/bundle.sh" "$ROOT/browser/src/main.tsx" "$STAGE/browser/dist/main.js"
 rm -f "$STAGE/launcher/dist/main.js.map" "$STAGE/browser/dist/main.js.map"
@@ -56,6 +57,8 @@ if [ "$TARGET" = darwin-arm64 ]; then
     "$APP/Contents/Info.plist" >/dev/null
   codesign --force --deep --sign - --timestamp=none "$APP" 2>/dev/null
   ELECTRON_EXE="electron/Terminal Effects Renderer.app/Contents/MacOS/Terminal Effects Renderer"
+  # This is intentionally expanded in the generated launcher, not this build script.
+  # shellcheck disable=SC2016
   NATIVE_SCROLL='export NATIVE_SCROLL_HELPER="${NATIVE_SCROLL_HELPER:-$ROOT/bin/native-scroll-helper}"'
 else
   cp -a "$ELECTRON_DIST/." "$STAGE/electron/"

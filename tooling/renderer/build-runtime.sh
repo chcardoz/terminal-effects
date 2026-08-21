@@ -40,6 +40,9 @@ fi
   "$RENDERER_ROOT/browser/src/main.tsx" "$STAGE/browser/dist/main.js"
 rm -f "$STAGE/launcher/dist/main.js.map" "$STAGE/browser/dist/main.js.map"
 cp "$RENDERER_ROOT/assets/fonts/JetBrainsMono-Regular.ttf" "$STAGE/assets/fonts/"
+cp "$RENDERER_ROOT/assets/fonts/LICENSE.Inter.txt" \
+  "$RENDERER_ROOT/assets/fonts/LICENSE.JetBrainsMono.txt" \
+  "$STAGE/assets/fonts/"
 cp "$REPO_ROOT/tooling/renderer/apparmor.sh" "$STAGE/scripts/apparmor.sh"
 
 ELECTRON_DIST="$(node -e 'const p=require("path");console.log(p.join(p.dirname(require.resolve("electron/package.json",{paths:[process.argv[1]]})),"dist"))' "$RENDERER_ROOT/browser")"
@@ -68,6 +71,11 @@ else
   ELECTRON_EXE="electron/electron"
   NATIVE_SCROLL=""
 fi
+
+# Electron keeps these files next to Electron.app on macOS, so copying only the
+# app bundle would otherwise omit the runtime's required notices.
+cp "$ELECTRON_DIST/LICENSE" "$ELECTRON_DIST/LICENSES.chromium.html" \
+  "$STAGE/electron/"
 
 cat > "$STAGE/bin/te-renderer" <<EOF
 #!/bin/sh

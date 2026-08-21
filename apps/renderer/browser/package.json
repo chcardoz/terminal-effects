@@ -1,0 +1,23 @@
+{
+  "name": "@terminal-effects/renderer-browser",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "postinstall": "bash ../../../tooling/renderer/fetch-electron.sh",
+    "build": "tsc -p tsconfig.json",
+    "build:engine": "pnpm --filter @terminal-effects/pixel-react build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@terminal-effects/pixel-react": "workspace:*",
+    "@terminal-effects/renderer-runtime": "workspace:*",
+    "@terminal-effects/terminal-adapters": "workspace:*",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "electron": "43.3.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "terminal-effects-workspace",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "build": "pnpm build:editor && pnpm build:runtime",
+    "build:editor": "pnpm --filter @terminal-effects/editor build",
+    "build:packages": "pnpm --filter @terminal-effects/pixel-react build:typescript && pnpm --filter @terminal-effects/renderer-runtime build && pnpm --filter @terminal-effects/terminal-adapters build",
+    "build:renderer": "pnpm build:packages && pnpm --filter @terminal-effects/renderer-browser build && pnpm --filter @terminal-effects/renderer-launcher build",
+    "build:runtime": "tooling/renderer/build-runtime.sh",
+    "check": "pnpm build:packages && pnpm typecheck && pnpm --filter @terminal-effects/terminal-adapters test && pnpm check:editor-assets",
+    "check:editor-assets": "tooling/editor/check-assets.sh",
+    "release:local": "tooling/release/build-release.sh",
+    "test:installer": "tooling/installer/test-installer.sh",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}

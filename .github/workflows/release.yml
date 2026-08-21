@@ -91,19 +91,20 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Enable pnpm
-        run: corepack enable
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Build complete release package
         env:
           VERSION: ${{ inputs.version }}
-        run: ./scripts/build-release.sh "$VERSION"
+        run: pnpm release:local "$VERSION"
 
       - name: Smoke-test packaged runtime
         env:

@@ -58,34 +58,31 @@ te serve . --port 4173
 The command prints a session-scoped localhost URL. The terminal version and the
 ordinary-browser version use the exact same UI and Rust API.
 
-The UI source lives in `web/src/`. The production Vite bundle is committed
-because Rust embeds it in the `te` executable. After editing the interface:
+The editor source lives in `apps/editor/`. Its production Vite bundle is
+committed because Rust embeds it in the `te` executable; `pnpm check` verifies
+that the committed assets match the source. From the repository root:
 
 ```bash
-cd web
-npm install
-npm run build
-cd ..
-cd renderer
 pnpm install
+pnpm check
 pnpm build:runtime
-cd ..
-cargo test
+cargo test --workspace
 ```
 
-Renderer sources live in `renderer/`. The renderer is intentionally limited to
-the Terminal Effects launcher, offscreen editor page, popup handling, native
-pixel bridge, terminal integration, and pinned Electron/Chromium build. The
-upstream project's browser chrome, recording tools, DevTools surfaces, instance
-registry, and browser database are not part of this product. Maintainers can
-produce a complete platform archive with `scripts/build-release.sh`.
+Runnable products live in `apps/`, reusable TypeScript libraries in `packages/`,
+native Rust libraries in `crates/`, and build/release helpers in `tooling/`.
+The renderer is intentionally limited to the launcher, offscreen editor page,
+popup handling, native pixel bridge, terminal integration, and pinned
+Electron/Chromium build. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for
+the workspace map. Maintainers can produce a complete platform archive with
+`pnpm release:local`.
 
 Maintainers publish macOS and Linux packages through a manually triggered,
 draft-first GitHub workflow. See [`docs/RELEASING.md`](docs/RELEASING.md).
 
 For Vite hot reload, run `te serve . --port 4173`, copy its session URL, and
-start `npm run dev` from `web/` with `TE_API_TARGET` set to that URL's origin and
-session prefix.
+start `pnpm --filter @terminal-effects/editor dev` with `TE_API_TARGET` set to
+that URL's origin and session prefix.
 
 ## Agent surface
 

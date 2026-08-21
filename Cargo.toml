@@ -1,22 +1,55 @@
-[package]
-name = "terminal-effects"
+[workspace]
+resolver = "3"
+members = [
+    "apps/te",
+    "apps/renderer/native/pixel-node",
+    "crates/pixel-core",
+]
+default-members = ["apps/te"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
-description = "A video editor rendered directly in the terminal"
 license = "MIT"
+publish = false
 
-[[bin]]
-name = "te"
-path = "src/main.rs"
-
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0"
+arboard = { version = "3.6", features = ["wayland-data-control"] }
+base64 = "0.22"
 clap = { version = "4.5", features = ["derive"] }
-image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+fontdue = "0.9"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "ico"] }
+libc = "0.2"
+miniz_oxide = "0.8"
+pixel-core = { path = "crates/pixel-core" }
+rustix = { version = "1", features = ["termios", "stdio", "event", "fs", "shm", "mm", "process", "pipe"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+taffy = "0.10"
+tempfile = "3.21"
 tiny_http = "0.12"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
 uuid = { version = "1.18", features = ["v4"] }
 
-[dev-dependencies]
-tempfile = "3.21"
+[workspace.lints.rust]
+rust_2018_idioms = { level = "warn", priority = -1 }
+unsafe_code = "warn"
+unused_doc_comments = "allow"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+
+# Native pixel dependencies stay optimized in development so renderer feedback
+# remains representative without slowing iteration on workspace-owned code.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.pixel-core]
+opt-level = 2
+
+[profile.dev.package.pixel-node]
+opt-level = 2
+
+[profile.dev]
+debug = "line-tables-only"

@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from Cargo.toml, without the v prefix
+        required: true
+        type: string
+      channel:
+        description: GitHub release channel
+        required: true
+        default: prerelease
+        type: choice
+        options:
+          - prerelease
+          - stable
+
+concurrency:
+  group: terminal-effects-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate release request
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          case "$VERSION" in
+            *[!0-9A-Za-z.-]*|.*|*..*|*.)
+              echo "invalid version: $VERSION" >&2
+              exit 1
+              ;;
+          esac
+          printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+          MANIFEST_VERSION="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          test "$VERSION" = "$MANIFEST_VERSION" || {
+            echo "requested $VERSION but Cargo.toml contains $MANIFEST_VERSION" >&2
+            exit 1
+          }
+          case "$CHANNEL:$VERSION" in
+            stable:*-*) echo "stable releases cannot use a prerelease version" >&2; exit 1 ;;
+            prerelease:*-*) ;;
+            prerelease:*) echo "prereleases need a suffix such as -beta.1" >&2; exit 1 ;;
+          esac
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION already exists" >&2
+            exit 1
+          fi
+
+  build:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: ubuntu-22.04
+            target: linux-x64
+          - runner: ubuntu-22.04-arm
+            target: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libasound2-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            pkg-config
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Build complete release package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: ./scripts/build-release.sh "$VERSION"
+
+      - name: Smoke-test packaged runtime
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir release-smoke
+          tar -xzf "dist/terminal-effects-$VERSION-$TARGET.tar.gz" -C release-smoke
+          PACKAGE="release-smoke/terminal-effects-$VERSION-$TARGET"
+          test "$(cat "$PACKAGE/VERSION")" = "$VERSION"
+          "$PACKAGE/bin/te" --version
+          "$PACKAGE/bin/te" runtime --json | grep -q '"source": "package"'
+
+      - name: Prepare immutable release assets
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir release-assets
+          ASSET="terminal-effects-$TARGET.tar.gz"
+          cp "dist/terminal-effects-$VERSION-$TARGET.tar.gz" "release-assets/$ASSET"
+          if command -v shasum >/dev/null 2>&1; then
+            (cd release-assets && shasum -a 256 "$ASSET" > "$ASSET.sha256")
+          else
+            (cd release-assets && sha256sum "$ASSET" > "$ASSET.sha256")
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.target }}
+          path: release-assets/*
+          compression-level: 0
+          if-no-files-found: error
+
+  draft:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify complete asset set
+        run: |
+          for target in darwin-arm64 linux-x64 linux-arm64; do
+            test -f "release-assets/terminal-effects-$target.tar.gz"
+            test -f "release-assets/terminal-effects-$target.tar.gz.sha256"
+          done
+
+      - name: Create draft GitHub release
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          FLAGS=(--draft)
+          if [ "$CHANNEL" = prerelease ]; then FLAGS+=(--prerelease); fi
+          gh release create "v$VERSION" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Terminal Effects $VERSION" \
+            --generate-notes \
+            "${FLAGS[@]}"
+          echo "A draft release was created. Review it and publish it manually from GitHub."

@@ -1,0 +1,15 @@
+{
+  "name": "terminal-effects-renderer",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:packages": "pnpm --filter pixel-react build:typescript && pnpm --filter pixel-store build && pnpm --filter pixel-terminals build",
+    "build:runtime": "scripts/build-runtime.sh",
+    "check": "pnpm build:packages && pnpm typecheck && pnpm --filter pixel-terminals test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

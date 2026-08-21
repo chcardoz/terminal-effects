@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup default stable
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Check Rust
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
+      - name: Check web interface
+        working-directory: web
+        run: |
+          npm ci
+          npm run check
+          npm run build
+
+      - name: Check renderer
+        working-directory: renderer
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm check
+
+      - name: Test installer
+        run: ./scripts/test-installer.sh

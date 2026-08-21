@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "name": "demo-project",
+  "revision": 0,
+  "fps": {
+    "numerator": 30,
+    "denominator": 1
+  },
+  "width": 1920,
+  "height": 1080,
+  "playheadFrame": 0,
+  "selectedClipId": null,
+  "assets": [],
+  "tracks": [
+    {
+      "id": "V1",
+      "kind": "video",
+      "name": "Video 1"
+    },
+    {
+      "id": "A1",
+      "kind": "audio",
+      "name": "Audio 1"
+    }
+  ],
+  "clips": []
+}

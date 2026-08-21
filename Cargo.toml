@@ -1,0 +1,22 @@
+[package]
+name = "terminal-effects"
+version = "0.1.0"
+edition = "2024"
+description = "A video editor rendered directly in the terminal"
+license = "MIT"
+
+[[bin]]
+name = "te"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tiny_http = "0.12"
+uuid = { version = "1.18", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3.21"

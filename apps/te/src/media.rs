@@ -160,6 +160,18 @@ fn transform_filter(width: u32, height: u32, transform: &ClipTransform) -> Strin
     filters.join(",")
 }
 
+fn extract_frame(media: &Path, seconds: f64, filter: &str, output: &Path) -> Result<Output> {
+    Command::new("ffmpeg")
+        .args(["-hide_banner", "-loglevel", "error", "-y", "-ss"])
+        .arg(format!("{seconds:.6}"))
+        .arg("-i")
+        .arg(media)
+        .args(["-frames:v", "1", "-vf", filter])
+        .arg(output)
+        .output()
+        .context("ffmpeg is required; install it with `brew install ffmpeg`")
+}
+
 fn contain_thumbnail(source: &RgbaImage, width: u32, height: u32) -> RgbaImage {
     let scale = (width as f64 / source.width().max(1) as f64)
         .min(height as f64 / source.height().max(1) as f64);
@@ -211,20 +223,19 @@ pub fn frame_at(
     let source_frame = clip.source_in_frame + frame - clip.start_frame;
     let source_seconds = project.fps.frames_to_seconds(source_frame);
     let media = resolve_asset_path(root, asset);
-    let result = Command::new("ffmpeg")
-        .args(["-hide_banner", "-loglevel", "error", "-y", "-ss"])
-        .arg(format!("{source_seconds:.6}"))
-        .arg("-i")
-        .arg(media)
-        .args(["-frames:v", "1", "-vf"])
-        .arg(transform_filter(
-            preview_width,
-            preview_height,
-            &clip.transform,
-        ))
-        .arg(&output)
-        .output()?;
+    let filter = transform_filter(preview_width, preview_height, &clip.transform);
+    let mut result = extract_frame(&media, source_seconds, &filter, &output)?;
+    if result.status.success() && !output.is_file() && source_seconds > 0.0 {
+        // Variable/source frame rates can put the nominal final project frame
+        // just beyond the source's last timestamp. Retry one project frame
+        // earlier instead of turning an otherwise valid filmstrip into a 500.
+        let previous = (source_seconds - 1.0 / project.fps.as_f64()).max(0.0);
+        result = extract_frame(&media, previous, &filter, &output)?;
+    }
     ensure_success("ffmpeg frame extraction", &result)?;
+    if !output.is_file() {
+        bail!("ffmpeg frame extraction produced no frame");
+    }
     Ok(output)
 }
 

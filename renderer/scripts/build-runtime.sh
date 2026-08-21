@@ -36,7 +36,7 @@ fi
 "$ROOT/scripts/bundle.sh" "$ROOT/launcher/src/main.ts" "$STAGE/launcher/dist/main.js"
 "$ROOT/scripts/bundle.sh" "$ROOT/browser/src/main.tsx" "$STAGE/browser/dist/main.js"
 rm -f "$STAGE/launcher/dist/main.js.map" "$STAGE/browser/dist/main.js.map"
-cp "$ROOT/assets/fonts/JetBrainsMono-Regular.ttf" "$STAGE/assets/fonts/"
+cp "$ROOT/engine/assets/fonts/JetBrainsMono-Regular.ttf" "$STAGE/assets/fonts/"
 cp "$ROOT/scripts/apparmor.sh" "$STAGE/scripts/apparmor.sh"
 
 ELECTRON_DIST="$(node -e 'const p=require("path");console.log(p.join(p.dirname(require.resolve("electron/package.json",{paths:[process.argv[1]]})),"dist"))' "$ROOT/browser")"

@@ -1,13 +1,7 @@
-mod capture;
-mod diff;
 mod events;
-mod highlight;
 #[cfg(target_os = "macos")]
 mod iosurface;
-mod markdown;
-mod mend;
 mod ops;
-mod record;
 #[cfg(target_os = "linux")]
 mod shm;
 mod surface;
@@ -29,99 +23,6 @@ use serde_json::json;
 use crate::events::event_json;
 use crate::ops::{IdMap, apply_ops};
 use crate::surface::{SurfaceCommand, SurfaceMailbox, SurfacePixels};
-
-pub struct EncodeRecordingTask {
-    job_json: String,
-    progress: Option<ThreadsafeFunction<f64>>,
-}
-
-impl Task for EncodeRecordingTask {
-    type Output = ();
-    type JsValue = ();
-
-    fn compute(&mut self) -> Result<()> {
-        let progress = self.progress.clone();
-        record::run(&self.job_json, &move |percent: f64| {
-            if let Some(callback) = &progress {
-                callback.call(Ok(percent), ThreadsafeFunctionCallMode::NonBlocking);
-            }
-        })
-        .map_err(Error::from_reason)
-    }
-
-    fn resolve(&mut self, _env: Env, _output: ()) -> Result<()> {
-        Ok(())
-    }
-}
-
-pub struct FilmstripTask {
-    dir: String,
-    frames: Vec<u32>,
-    tile_width: u32,
-    width: u32,
-    height: u32,
-}
-
-impl Task for FilmstripTask {
-    type Output = Vec<u8>;
-    type JsValue = Buffer;
-
-    fn compute(&mut self) -> Result<Vec<u8>> {
-        let mut segment = capture::Segment::open(std::path::Path::new(&self.dir))
-            .map_err(|e| Error::from_reason(format!("{}: {e}", self.dir)))?;
-        let mut strip = pixel_core::Canvas::new(self.width, self.height);
-        strip.fill([24, 24, 26, 255]);
-        for (slot, &index) in self.frames.iter().enumerate() {
-            let (pixels, w, h) = segment.frame(index as usize).map_err(err)?;
-            strip.blit_scaled_rgba(
-                (slot as u32 * self.tile_width) as f32,
-                0.0,
-                self.tile_width as f32,
-                self.height as f32,
-                pixels,
-                w,
-                h,
-            );
-        }
-        Ok(strip.pixels)
-    }
-
-    fn resolve(&mut self, _env: Env, output: Vec<u8>) -> Result<Buffer> {
-        Ok(Buffer::from(output))
-    }
-}
-
-#[napi(ts_return_type = "Promise<Buffer>")]
-pub fn capture_filmstrip(
-    dir: String,
-    frames: Vec<u32>,
-    tile_width: u32,
-    width: u32,
-    height: u32,
-) -> AsyncTask<FilmstripTask> {
-    AsyncTask::new(FilmstripTask {
-        dir,
-        frames,
-        tile_width,
-        width,
-        height,
-    })
-}
-
-#[napi(ts_return_type = "Promise<void>")]
-pub fn encode_recording(
-    job_json: String,
-    on_progress: Option<JsFunction>,
-) -> Result<AsyncTask<EncodeRecordingTask>> {
-    let progress = on_progress
-        .map(|callback| {
-            callback.create_threadsafe_function(0, |ctx: ThreadSafeCallContext<f64>| {
-                ctx.env.create_double(ctx.value).map(|value| vec![value])
-            })
-        })
-        .transpose()?;
-    Ok(AsyncTask::new(EncodeRecordingTask { job_json, progress }))
-}
 
 struct Autoprofile {
     stop_at: Option<std::time::Instant>,
@@ -238,8 +139,7 @@ impl DamageRect {
 }
 
 static UI_FONT_BYTES: &[u8] = include_bytes!("../../../assets/fonts/InterVariable.ttf");
-static MONO_FONT_BYTES: &[u8] =
-    include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf");
+static MONO_FONT_BYTES: &[u8] = include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf");
 
 const SYSTEM_UI_FONTS: &[&str] = &[
     "/System/Library/Fonts/SFNSRounded.ttf",
@@ -278,7 +178,6 @@ pub(crate) fn colors_json(colors: &TerminalColors) -> serde_json::Value {
     })
 }
 
-
 #[napi]
 pub struct PixelEngine {
     engine: Option<Engine>,
@@ -287,7 +186,6 @@ pub struct PixelEngine {
     rx: Option<Receiver<String>>,
     waker: Waker,
     surfaces: Arc<SurfaceMailbox>,
-    captures: capture::Registry,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
@@ -338,9 +236,7 @@ impl PixelEngine {
             tx,
             rx: Some(rx),
             waker,
-            // who even uses you tho
             surfaces: Arc::new(SurfaceMailbox::default()),
-            captures: capture::Registry::default(),
             stop: Arc::new(AtomicBool::new(false)),
             thread: None,
         })
@@ -382,8 +278,6 @@ impl PixelEngine {
             )));
         }
         let damage = damage.map(DamageRect::into_rect);
-        self.captures
-            .capture(id, &source[..expected], width as usize * 4, width, height, damage);
         let mut owned = self.surfaces.take_spare(id);
         owned.clear();
         owned.extend_from_slice(&source[..expected]);
@@ -416,66 +310,6 @@ impl PixelEngine {
             "rows": rows,
         })
         .to_string()
-    }
-
-    #[napi]
-    pub fn start_surface_capture(&self, surface_id: u32, dir: String) -> Result<u32> {
-        self.captures
-            .start(surface_id, std::path::Path::new(&dir))
-            .map_err(err)
-    }
-
-    #[napi]
-    pub fn stop_surface_capture(&self, capture_id: u32) -> Result<String> {
-        let stats  = self.captures.stop(capture_id).map_err(err)?;
-        Ok(json!({
-            "frames": stats.frames,
-            "drops": stats.drops,
-            "durationMs": stats.duration_us as f64 / 1000.0,
-        })
-        .to_string())
-    }
-
-    #[napi]
-    pub fn capture_index(&self, capture_id: u32) -> Result<String> {
-        self.captures
-            .with_segment(capture_id, |segment| {
-                let frames: Vec<serde_json::Value> = segment
-                    .metas()
-                    .iter()
-                    .map(|meta| {
-                        json!({
-                            "tMs": meta.t_us as f64 / 1000.0,
-                            "key": meta.key,
-                            "width": meta.width,
-                            "height": meta.height,
-                            "dropsBefore": meta.drops_before,
-                        })
-                    })
-                    .collect();
-                Ok(json!({
-                    "frames": frames,
-                    "drops": segment.drops,
-                    "durationMs": segment.duration_us as f64 / 1000.0,
-                })
-                .to_string())
-            })
-            .map_err(err)
-    }
-
-    #[napi]
-    pub fn capture_frame(&self, capture_id: u32, index: u32) -> Result<Buffer> {
-        self.captures
-            .with_segment(capture_id, |segment| {
-                let (pixels, _, _) = segment.frame(index as usize)?;
-                Ok(Buffer::from(pixels))
-            })
-            .map_err(err)
-    }
-
-    #[napi]
-    pub fn release_capture(&self, capture_id: u32) {
-        self.captures.release(capture_id);
     }
 
     #[napi]
@@ -602,17 +436,6 @@ impl PixelEngine {
         let surface =
             iosurface::RetainedSurface::from_handle(handle.as_ref()).map_err(Error::from_reason)?;
         let damage = damage.map(DamageRect::into_rect);
-        if self.captures.wants(id) {
-            let locked = surface.lock().map_err(Error::from_reason)?;
-            self.captures.capture(
-                id,
-                locked.pixels(),
-                locked.stride,
-                locked.width,
-                locked.height,
-                damage,
-            );
-        }
         self.surfaces
             .submit(id, SurfacePixels::IoSurface(surface), damage);
         self.waker.wake();
@@ -651,16 +474,6 @@ impl PixelEngine {
             surface.set_on_drop(hook);
         }
         let damage = damage.map(DamageRect::into_rect);
-        if self.captures.wants(id) {
-            self.captures.capture(
-                id,
-                surface.pixels(),
-                surface.stride,
-                surface.width,
-                surface.height,
-                damage,
-            );
-        }
         self.surfaces
             .submit(id, SurfacePixels::Shm(surface), damage);
         self.waker.wake();

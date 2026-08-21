@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import net from "node:net";
 import path from "node:path";
 
 import { app, screen } from "electron";
@@ -24,25 +23,7 @@ app.commandLine.appendSwitch("log-file", path.join(LOGS_DIR, "chromium.log"));
 app.setName("Terminal Effects Renderer");
 claimProfile();
 
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = net.createServer();
-    probe.once("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const address = probe.address();
-      probe.close(() => {
-        if (address && typeof address === "object") resolve(address.port);
-        else reject(new Error("no port assigned"));
-      });
-    });
-  });
-}
-
-
 void (async () => {
-  const cdpPort = await freePort().catch(() => null);
-  if (cdpPort != null) app.commandLine.appendSwitch("remote-debugging-port", String(cdpPort));
   await app.whenReady();
   appLog(
     "info",
@@ -52,7 +33,7 @@ void (async () => {
       .map((d) => `${d.size.width}x${d.size.height}@${d.scaleFactor}x`)
       .join(", ")}`,
   );
-  await runDaemon(cdpPort);
+  await runDaemon();
 })().catch((error) => {
   process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
   app.exit(1);

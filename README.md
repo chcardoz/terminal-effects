@@ -73,12 +73,12 @@ cd ..
 cargo test
 ```
 
-Renderer sources live in `renderer/`. The packaged runtime contains only the
-Terminal Effects launcher, offscreen browser process, native pixel bridge,
-terminal integration, and pinned Electron/Chromium build. General browser CLI,
-agent-browser, split-pane commands, skills, and browser installation machinery
-are not shipped. Maintainers can produce a complete platform archive with
-`scripts/build-release.sh`.
+Renderer sources live in `renderer/`. The renderer is intentionally limited to
+the Terminal Effects launcher, offscreen editor page, popup handling, native
+pixel bridge, terminal integration, and pinned Electron/Chromium build. The
+upstream project's browser chrome, recording tools, DevTools surfaces, instance
+registry, and browser database are not part of this product. Maintainers can
+produce a complete platform archive with `scripts/build-release.sh`.
 
 Maintainers publish macOS and Linux packages through a manually triggered,
 draft-first GitHub workflow. See [`docs/RELEASING.md`](docs/RELEASING.md).

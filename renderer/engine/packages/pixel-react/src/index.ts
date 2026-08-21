@@ -1,4 +1,4 @@
-import { createElement, Profiler as ReactProfiler, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ConcurrentRoot } from "react-reconciler/constants";
 
 import {
@@ -6,7 +6,6 @@ import {
   Bridge,
   ChangeSource,
   Container,
-  DEVTOOLS_VIEW,
   getBridge,
   MarkRef,
   reconciler,
@@ -14,34 +13,12 @@ import {
 import type { PasteSource, PastedImage, SelectionPart } from "./reconciler-config";
 import type { EngineInfo, TerminalColors } from "./native";
 import { Surface } from "./surface";
-import { handleDevtoolsKey } from "./devtools/app";
-import { installConsoleCapture } from "./devtools/console-capture";
-import {
-  closeDevtools,
-  engineOp,
-  onEngineProfile,
-  openDevtools,
-  requestLayout,
-  selectNode,
-  toggleDevtools,
-  unmountDevtools,
-} from "./devtools/controller";
-import { installFiberHook } from "./devtools/fiber-hook";
 import { publishColors } from "./colors";
-import { refreshTheme } from "./devtools/theme";
-import {
-  devtoolsStore,
-  engineLogs,
-  inspectorStore,
-  layoutStore,
-  LayoutRect,
-  profilerStore,
-  recordSpan,
-} from "./devtools/stores";
-import type { LogLevel } from "./devtools/store";
 
-function appLog(level: LogLevel, target: string, text: string): void {
-  engineLogs.push(level, target, text);
+type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
+
+export function appLog(level: LogLevel, target: string, message: string): void {
+  process.stderr.write(`pixel-react ${level} ${target}: ${message}\n`);
 }
 
 export {
@@ -53,9 +30,6 @@ export {
   Path,
 } from "./components";
 export type { NodeHandle } from "./components";
-export { appLog };
-export { layoutStore, profilerStore } from "./devtools/stores";
-export type { LayoutSnapshot, ProfileSession } from "./devtools/stores";
 export type {
   BoxProps,
   TextProps,
@@ -84,32 +58,10 @@ export type {
   PathProps,
 } from "./reconciler-config";
 export type { Color, Edges, InsetEdges, InsetValue, ScrollbarStyle, Style } from "./styles";
-export type {
-  DiffEmphasis,
-  DiffRow,
-  EngineInfo,
-  HighlightSpan,
-  MarkdownBlock,
-  MarkdownCell,
-  MarkdownRow,
-  MarkdownSpan,
-  Rgba,
-  SurfaceShm,
-  TerminalColors,
-} from "./native";
-export { HIGHLIGHT_CAPTURES, captureFilmstrip, diff, encodeRecording, highlight, parseMarkdown } from "./native";
+export type { EngineInfo, Rgba, SurfaceShm, TerminalColors } from "./native";
 export { useTerminalColors } from "./colors";
-export { Surface, SurfaceCapture } from "./surface";
-export type {
-  SurfaceFrame,
-  SurfaceTexture,
-  CaptureStats,
-  CaptureFrameMeta,
-  CaptureIndex,
-} from "./surface";
-export { Markdown } from "./markdown";
-export type { MarkdownProps, MarkdownTheme } from "./markdown";
-export { openDevtools, closeDevtools, toggleDevtools, requestLayout, engineOp };
+export { Surface } from "./surface";
+export type { SurfaceFrame, SurfaceTexture } from "./surface";
 
 /**
  * 
@@ -165,7 +117,6 @@ export interface RootOptions {
   onResize?: (size: { width: number; height: number; basePx: number }) => void;
   onColors?: (colors: TerminalColors) => void;
   keyEventTypes?: boolean;
-  devtools?: boolean;
   tty?: string;
   wrapper?: "tmux";
   sessionEnv?: NodeJS.ProcessEnv;
@@ -179,8 +130,6 @@ export interface PixelRoot {
   createSurface(): Surface;
   surfaceStats(): SurfaceStats;
   stop(): void;
-  openDevtools(): void;
-  closeDevtools(): void;
   // nudge resize is a ridiculous api
   nudgeResize(): void;
   setPointerShape(shape: string): void;
@@ -239,34 +188,17 @@ interface EngineEventJson {
   level?: string;
   target?: string;
   stats?: { frameMs: number; fps: number };
-  nodes?: LayoutRect[];
-  spans?: Array<{
-    name: string;
-    start: number;
-    dur: number;
-    depth: number;
-    view: number;
-    arg?: number | null;
-  }>;
-  counters?: Array<{ name: string; at: number; value: number }>;
   marks?: unknown[];
 }
 
 function applyColors(colors: TerminalColors): void {
   publishColors(colors);
-  refreshTheme(colors);
-  devtoolsStore.update((s) => ({ ...s, background: colors.background }));
 }
 
 export function createRoot(options: RootOptions = {}): PixelRoot {
   const bridge = options.tty
     ? new Bridge(options.tty, options.wrapper, options.sessionEnv)
     : getBridge(options.wrapper);
-  const devtoolsEnabled = options.devtools !== false && bridge === getBridge();
-  if (devtoolsEnabled) {
-    installConsoleCapture();
-    installFiberHook();
-  }
   const info = JSON.parse(bridge.engine.info()) as EngineInfo;
   applyColors(info.colors);
   bridge.engine.setKeyEventTypes(!!options.keyEventTypes);
@@ -279,28 +211,9 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
     false,
     null,
     "pixel",
-    (error: unknown) => {
-      engineLogs.push("error", "react", String(error));
-    },
+    (error: unknown) => process.stderr.write(`pixel-react render error: ${String(error)}\n`),
     null
   );
-  if (devtoolsEnabled) {
-    reconciler.injectIntoDevTools({
-      bundleType: 0,
-      version: "18.3.1",
-      rendererPackageName: "pixel-react",
-    });
-    bridge.onFlush = (sample) => {
-      recordSpan({
-        name: `ops flush (${sample.ops} ops)`,
-        start: sample.start,
-        dur: sample.dur,
-        depth: 0,
-        lane: "bridge",
-        arg: sample.seq,
-      });
-    };
-  }
 
   const fontIds = new Map<string, number>();
   const fontRequests = new Map<
@@ -457,15 +370,11 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
           info.height = size.height;
           info.basePx = size.basePx;
           options.onResize?.(size);
-        } else {
-          devtoolsStore.update((s) => ({ ...s, ...size }));
         }
         break;
       }
       case "key": {
-        if (view === DEVTOOLS_VIEW) {
-          handleDevtoolsKey(event.key!);
-        } else {
+        if (view === APP_VIEW) {
           options.onKey?.({
             key: event.key!,
             kind: event.kind as "press" | "repeat" | "release",
@@ -487,47 +396,19 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
         options.onFocus?.(!!event.focused);
         break;
       case "inspect":
-        if (devtoolsEnabled && view === APP_VIEW && event.node != null) {
-          openDevtools(event.node);
-          selectNode(event.node, true);
-        }
         break;
       case "log":
-        engineLogs.push(
+        appLog(
           (event.level as LogLevel) ?? "info",
           event.target ?? "engine",
           event.message ?? event.text ?? "",
-          event.epochMs
         );
         break;
-      case "layout": {
-        const rects = new Map<number, LayoutRect>();
-        for (const node of event.nodes ?? []) rects.set(node.id, node);
-        layoutStore.set({
-          rects,
-          stats: event.stats ?? { frameMs: 0, fps: 0 },
-          width: event.width ?? 0,
-          height: event.height ?? 0,
-          at: Date.now(),
-        });
-        break;
-      }
+      case "layout":
       case "profile":
-        onEngineProfile({
-          epochMs: event.epochMs ?? 0,
-          spans: event.spans ?? [],
-          counters: event.counters ?? [],
-          marks: (event.marks as Array<{
-            name: string;
-            label: string;
-            start: number;
-            dur: number;
-            view: number;
-          }> | undefined) ?? [],
-        });
         break;
       case "error":
-        engineLogs.push("error", "bridge", event.message ?? "unknown bridge error");
+        appLog("error", "bridge", event.message ?? "unknown bridge error");
         break;
       case "fontRegistered": {
         const pending = fontRequests.get(event.path!) ?? [];
@@ -558,22 +439,10 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
     if (err) return;
     const event = JSON.parse(json) as EngineEventJson;
     dispatch(event);
-    if (event.atMs && event.type !== "profile" && profilerStore.get().recording) {
-      const now = performance.timeOrigin + performance.now();
-      recordSpan({
-        name: `event ${event.type}`,
-        start: event.atMs,
-        dur: Math.max(now - event.atMs, 0.01),
-        depth: 0,
-        lane: "bridge",
-      });
-    }
   });
 
-  if (!devtoolsEnabled || options.onRightClick) {
-    bridge.push(APP_VIEW, { op: "setDefaultMenu", on: false });
-    bridge.flush();
-  }
+  bridge.push(APP_VIEW, { op: "setDefaultMenu", on: false });
+  bridge.flush();
 
   /**
    * 
@@ -585,34 +454,13 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
   const restore = () => bridge.engine.stop();
   process.on("exit", restore);
 
-  const onAppRender = (
-    _id: string,
-    phase: "mount" | "update" | "nested-update",
-    actualDuration: number,
-    _baseDuration: number,
-    startTime: number,
-    commitTime: number
-  ) => {
-    recordSpan({
-      name: `react ${phase}`,
-      start: performance.timeOrigin + startTime,
-      dur: Math.max(commitTime - startTime, actualDuration),
-      depth: 0,
-      lane: "react",
-      self: actualDuration,
-    });
-  };
-
   let nextSurfaceId = 1;
 
   return {
     info,
     sharedTextures: typeof bridge.engine.updateSurfaceTexture === "function",
     render(element: ReactNode) {
-      const wrapped = devtoolsEnabled
-        ? createElement(ReactProfiler, { id: "pixel-app", onRender: onAppRender }, element)
-        : element;
-      reconciler.updateContainer(wrapped, root, null, null);
+      reconciler.updateContainer(element, root, null, null);
     },
     registerFont(path: string) {
       const known = fontIds.get(path);
@@ -638,16 +486,9 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
       reconciler.flushSync(() => {
         reconciler.updateContainer(null, root, null, null);
       });
-      unmountDevtools();
       bridge.engine.stop();
       if (!options.tty) process.stdout.off("resize", forwardResize);
       process.off("exit", restore);
-    },
-    openDevtools() {
-      openDevtools();
-    },
-    closeDevtools() {
-      closeDevtools();
     },
     // shitty name     
     nudgeResize() {
@@ -671,5 +512,3 @@ export function createRoot(options: RootOptions = {}): PixelRoot {
     },
   };
 }
-
-export { inspectorStore };

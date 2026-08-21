@@ -6,7 +6,6 @@ import { Color, parseColor, serializeStyle, Style } from "./styles";
 import { Surface, surfaceId } from "./surface";
 
 export const APP_VIEW = 0;
-export const DEVTOOLS_VIEW = 1;
 
 export interface ClickEvent {
   x: number;

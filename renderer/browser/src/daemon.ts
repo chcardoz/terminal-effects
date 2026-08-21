@@ -18,18 +18,9 @@ interface OpenRequest {
   argv?: string[];
   env?: Record<string, string | undefined>;
   cwd?: string;
-  build?: string;
 }
 
-export function buildStamp(): string {
-  try {
-    return String(Math.floor(fs.statSync(path.join(__dirname, "main.js")).mtimeMs));
-  } catch {
-    return "unknown";
-  }
-}
-
-export async function runDaemon(cdpPort: number | null): Promise<void> {
+export async function runDaemon(): Promise<void> {
   if (await socketAlive()) {
     process.stderr.write("Terminal Effects renderer daemon already running\n");
     app.exit(3);
@@ -38,7 +29,6 @@ export async function runDaemon(cdpPort: number | null): Promise<void> {
   fs.mkdirSync(path.dirname(DAEMON_SOCKET), { recursive: true });
   fs.rmSync(DAEMON_SOCKET, { force: true });
 
-  const build = buildStamp();
   const sessions = new Map<string, SessionHandle>();
   let seq = 0;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -87,12 +77,6 @@ export async function runDaemon(cdpPort: number | null): Promise<void> {
           continue;
         }
         if (message.cmd === "open" && !session) {
-          if (message.build && message.build !== build) {
-            reply({ ok: false, error: "stale" });
-            connection.end();
-            if (sessions.size === 0) app.exit(0);
-            return;
-          }
           if (!message.tty) {
             reply({ ok: false, error: "no tty" });
             connection.end();
@@ -104,11 +88,9 @@ export async function runDaemon(cdpPort: number | null): Promise<void> {
           try {
             session = createSession({
               tty: message.tty,
-              key: sessionKey,
               argv: message.argv ?? [],
               env: message.env ?? {},
               cwd: message.cwd ?? process.cwd(),
-              cdpPort,
               onClose: (code) => {
                 sessions.delete(sessionKey);
                 reply({ event: "closed", code });

@@ -64,7 +64,6 @@ pub fn run(project_path: &Path) -> Result<()> {
     let _session = SessionGuard::write(root, project_path, &server.url)?;
     let status = Command::new(renderer)
         .arg(&server.url)
-        .arg("--app-mode")
         .arg(format!("--preload={}", preload.display()))
         .current_dir(root)
         .stdin(Stdio::inherit())

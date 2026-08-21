@@ -3,8 +3,7 @@ import type { BrowserWindow } from "electron";
 import type { Surface } from "pixel-react";
 import { cursorShapeFor } from "./cursor";
 import { PageInput } from "./input";
-import { scaleZoom, stepZoom } from "./zoom";
-import type { ZoomDirection } from "./zoom";
+import { scaleZoom } from "./zoom";
 
 export interface PopupState {
   url: string;
@@ -91,10 +90,6 @@ export class PopupWindow {
 
   close() {
     if (!this.destroyed) this.window.destroy();
-  }
-
-  zoom(direction: ZoomDirection): number {
-    return stepZoom(this.window.webContents, direction);
   }
 
   scaleZoom(ratio: number): number {

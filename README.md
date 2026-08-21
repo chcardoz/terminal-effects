@@ -13,6 +13,26 @@ Terminal Effects renderer → Kitty graphics → terminal
 Rust project model + FFmpeg + agent CLI
 ```
 
+## Install
+
+Terminal Effects currently supports Apple Silicon macOS, x86-64 Linux, and
+ARM64 Linux. Install the latest stable release with Homebrew:
+
+```bash
+brew install --cask chcardoz/tap/te
+```
+
+Or install directly from GitHub without Homebrew:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chcardoz/terminal-effects/main/install.sh | sh
+```
+
+The direct installer verifies the release checksum and installs into
+`~/.local/share/terminal-effects`, with the `te` link in `~/.local/bin`.
+FFmpeg and FFprobe must be available on `PATH`. Use Ghostty on macOS, Kitty on
+Linux, or another terminal that supports the Kitty graphics protocol.
+
 ## Start a project
 
 ```bash
@@ -59,6 +79,9 @@ terminal integration, and pinned Electron/Chromium build. General browser CLI,
 agent-browser, split-pane commands, skills, and browser installation machinery
 are not shipped. Maintainers can produce a complete platform archive with
 `scripts/build-release.sh`.
+
+Maintainers publish macOS and Linux packages through a manually triggered,
+draft-first GitHub workflow. See [`docs/RELEASING.md`](docs/RELEASING.md).
 
 For Vite hot reload, run `te serve . --port 4173`, copy its session URL, and
 start `npm run dev` from `web/` with `TE_API_TARGET` set to that URL's origin and

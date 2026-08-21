@@ -50,21 +50,12 @@ fn locate() -> Option<Renderer> {
     }
 
     if let Ok(current_binary) = env::current_exe()
-        && let Some(directory) = current_binary.parent()
+        && let Some(path) = packaged_renderer(&current_binary)
     {
-        for relative in [
-            "../libexec/terminal-effects-renderer/bin/te-renderer",
-            "../libexec/terminal-effects/renderer/bin/te-renderer",
-            "../runtime/terminal-effects-renderer/bin/te-renderer",
-        ] {
-            let path = directory.join(relative);
-            if executable(&path) {
-                return Some(Renderer {
-                    path,
-                    source: "package",
-                });
-            }
-        }
+        return Some(Renderer {
+            path,
+            source: "package",
+        });
     }
 
     if let Some(path) = find_on_path("te-renderer") {
@@ -80,6 +71,23 @@ fn locate() -> Option<Renderer> {
         path: development,
         source: "development",
     })
+}
+
+fn packaged_renderer(current_binary: &Path) -> Option<PathBuf> {
+    let resolved =
+        fs::canonicalize(current_binary).unwrap_or_else(|_| current_binary.to_path_buf());
+    let directory = resolved.parent()?;
+    for relative in [
+        "../libexec/terminal-effects-renderer/bin/te-renderer",
+        "../libexec/terminal-effects/renderer/bin/te-renderer",
+        "../runtime/terminal-effects-renderer/bin/te-renderer",
+    ] {
+        let path = directory.join(relative);
+        if executable(&path) {
+            return Some(fs::canonicalize(&path).unwrap_or(path));
+        }
+    }
+    None
 }
 
 fn runtime_version(binary: &Path) -> Option<String> {
@@ -105,6 +113,7 @@ fn find_on_path(name: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::symlink;
 
     #[test]
     fn reads_version_next_to_renderer() {
@@ -114,5 +123,25 @@ mod tests {
         fs::write(&binary, "").unwrap();
         fs::write(temporary.path().join("VERSION"), "v1\n").unwrap();
         assert_eq!(runtime_version(&binary).as_deref(), Some("v1"));
+    }
+
+    #[test]
+    fn finds_packaged_renderer_when_te_is_launched_through_a_symlink() {
+        let temporary = tempfile::tempdir().unwrap();
+        let package = temporary.path().join("package");
+        let binary = package.join("bin/te");
+        let renderer = package.join("libexec/terminal-effects-renderer/bin/te-renderer");
+        fs::create_dir_all(binary.parent().unwrap()).unwrap();
+        fs::create_dir_all(renderer.parent().unwrap()).unwrap();
+        fs::write(&binary, "").unwrap();
+        fs::write(&renderer, "").unwrap();
+        let linked = temporary.path().join("te");
+        symlink(&binary, &linked).unwrap();
+        let renderer = fs::canonicalize(renderer).unwrap();
+
+        assert_eq!(
+            packaged_renderer(&linked).as_deref(),
+            Some(renderer.as_path())
+        );
     }
 }

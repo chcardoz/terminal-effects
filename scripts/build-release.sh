@@ -23,8 +23,9 @@ mkdir -p "$STAGE/bin" "$STAGE/libexec"
 cp "$ROOT/target/release/te" "$STAGE/bin/te"
 cp -R "$ROOT/renderer/dist/terminal-effects-renderer" \
   "$STAGE/libexec/terminal-effects-renderer"
-cp "$ROOT/README.md" "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/"
+cp "$ROOT/LICENSE" "$ROOT/README.md" "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/"
 cp "$ROOT/renderer/LICENSE.terminal-browser" "$STAGE/"
+printf '%s\n' "$VERSION" > "$STAGE/VERSION"
 
 TARBALL="$OUT/$PACKAGE.tar.gz"
 tar -czf "$TARBALL" -C "$OUT" "$PACKAGE"

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 #[cfg(target_os = "macos")]
 use std::thread;
+#[cfg(any(target_os = "macos", test))]
 use std::time::Duration;
 
 pub struct CpuThrottle {
@@ -9,7 +10,9 @@ pub struct CpuThrottle {
 }
 
 const MAX_THREADS: usize = 8;
+#[cfg(target_os = "macos")]
 const RUN_QUANTUM: Duration = Duration::from_millis(4);
+#[cfg(target_os = "macos")]
 const IDLE_POLL: Duration = Duration::from_millis(30);
 
 struct Inner {
